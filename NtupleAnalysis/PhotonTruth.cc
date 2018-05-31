@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
   
   TH1D h_Den("h_Den", "truth photons", 20, 10, 30);    
   TH1D h_Num("h_Num", "reco photons filled with truthpt reco", 20, 10, 30);    
-TH1D h_Num2("h_Num2", "reco photons filled with pt reco", 20, 10, 30);    
+  TH1D h_Num2("h_Num2", "reco photons filled with pt reco", 20, 10, 30);    
   TH2D h_Correlation("h_Correlation", "", 20, 10, 30, 20, 10, 30);    
 
   h_Den.Sumw2();
@@ -74,7 +74,7 @@ TH1D h_Num2("h_Num2", "reco photons filled with pt reco", 20, 10, 30);
   h_Den.SetTitle("; p_{T}^{truth} [GeV]; entries");
   h_Num.SetTitle("; p_{T}^{Reco,truthpt} [GeV]; entries");
   h_Num2.SetTitle("; p_{T}^{Reco,pt} [GeV]; entries");
-  h_Correlation->SetTitle("; True p_{T} [GeV]; Reconstructed p_{T} [GeV]");
+  h_Correlation.SetTitle("; True p_{T} [GeV]; Reconstructed p_{T} [GeV]");
 
   TH1F hDen("hDen", "", nbinstrack, trackbins);
   TH1F hNum("hNum","", nbinstrack, trackbins);
@@ -95,11 +95,11 @@ TH1D h_Num2("h_Num2", "reco photons filled with pt reco", 20, 10, 30);
   hNum.SetTitle("; p_{T}^{Reco,Embed} [GeV/c]; entries");
   hNum2.SetTitle("; p_{T}^{Reco} [GeV/c]; entries");
   hFake.SetTitle("; p_{T}^{reco} [GeV/c]; Fake Rate");
-  hCorrelation->SetTitle("; True p_{T} [GeV/c]; Reconstructed p_{T} [GeV/c]");
+  hCorrelation.SetTitle("; True p_{T} [GeV/c]; Reconstructed p_{T} [GeV/c]");
  
   int TrackBit = 16;
   int numEvents_tracks = 0;
-  int numEvents_cluster = 0;
+  int numEvents_clusters = 0;
   TApplication application("", &dummyc, dummyv);
   TCanvas* canvas = new TCanvas();
   
@@ -279,7 +279,7 @@ TH1D h_Num2("h_Num2", "reco photons filled with pt reco", 20, 10, 30);
 	  if((TMath::Abs(mc_truth_pdg_code[index])!= 211)  && 
 	     (TMath::Abs(mc_truth_pdg_code[index])!=321) && 
 	     (TMath::Abs(mc_truth_pdg_code[index])!=2212)) continue;//*/
-	  if (eventChange) {numEvents_track++; eventChange = false;}
+	  if (eventChange) {numEvents_tracks++; eventChange = false;}
 	  
 	  hNum.Fill(mc_truth_pt[index],weight);
 	  hNum2.Fill(track_pt[n],weight);
@@ -306,6 +306,7 @@ TH1D h_Num2("h_Num2", "reco photons filled with pt reco", 20, 10, 30);
 
 
 
+      eventChange = true;
       //loop over clusters
       for (ULong64_t n = 0; n < ncluster; n++) {
         //Photon Selection
@@ -342,6 +343,7 @@ TH1D h_Num2("h_Num2", "reco photons filled with pt reco", 20, 10, 30);
             h_Num.Fill(truth_pt);
             h_Num2.Fill(cluster_pt[n]); 
 	    h_Correlation.Fill(truth_pt, cluster_pt[n]);
+	    if (eventChange) {numEvents_clusters++; eventChange = false;}
 	} 
       }//end loop on clusters
        
@@ -382,7 +384,8 @@ TH1D h_Num2("h_Num2", "reco photons filled with pt reco", 20, 10, 30);
     }//end over events
 
   }//end loop over ntuples
-  cout << numEvents << endl;
+  cout << numEvents_tracks << endl;
+  cout << numEvents_clusters << endl;
   /*const double tot_eta = 1.6;  
   for(int i = 1; i < hNum2->GetNbinsX()+1; i++)
     {
