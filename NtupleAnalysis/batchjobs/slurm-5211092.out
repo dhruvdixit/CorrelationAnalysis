@@ -1,0 +1,45 @@
+Currently Loaded Modulefiles:
+  1) modules               4) gcc/4.8.1             7) ROOT/6.08.00
+  2) nsg/1.2.0             5) python/2.7-anaconda   8) hdf5/1.8.13
+  3) slurm/2017.08.30      6) cmake/3.5.2
+/usr/common/usg/software/gcc/4.8.1/bin/gcc
+Mon Jun 11 23:07:18 PDT 2018
+Opening: InputData/13defv1_c_140_159_6GeV_TrackSkim_mixed.root
+InputData/13c_pass4_v1_6GeV_Skim.hdf5
+Mix Start is: 140 
+Mix End is: 159 
+Using 6GeV Track Skimmed from batch Script 
+Output root file will be: Mix_Correlation_140_159_6GeVTracks_13def.root
+Number of Mixed Events: 300 
+pT_min: 10
+pT_max: 16
+DNN_min: 0.55
+DNN_max: 0.85
+Eta_max: 0.6
+Cluster_min: 2
+EcrossoverE_min; 0.03
+iso_max: 1
+noniso_min: 5
+noniso_max: 10
+deta_max: 0.6
+Number of Phi Bins: 24
+Number of Eta Bins: 14
+Track Cut Bit: 16
+Number of Zt bins: 7
+Zt bins: {0, 0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.2, }
+Number of Pt bins: 1
+Pt bins: {10, 16, }
+Isolation Variable: cluster_iso_tpc_04
+zt bound: 0
+zt bound: 0.1
+zt bound: 0.2
+zt bound: 0.4
+zt bound: 0.6
+zt bound: 0.8
+zt bound: 1
+zt bound: 1.2
+pt bound: 10
+pt bound: 16
+TFile: name=InputData/13defv1_c_140_159_6GeV_TrackSkim_mixed.root, title=, option=READ
+ fail 
+Mon Jun 11 23:07:22 PDT 2018
