@@ -11,11 +11,15 @@
 #include <TCanvas.h>
 #include <TStyle.h>
 #include <TH2D.h>
+#include <TH2F.h>
+#include <TF1.h>
 #include <THStack.h>
 #include <TProfile.h>
 #include <iostream>
 #include <fstream>
 #include <TGraphAsymmErrors.h>
+#include <TGraphErrors.h>
+
 
 #define NTRACK_MAX (1U << 15)
 
@@ -23,6 +27,46 @@
 #include <math.h>
 
 using namespace std;
+
+double SetPthatWeights(TString filename, double Xsection, double ntrial)
+{
+
+  TString MC = filename(filename.Last('/')+1,2);
+  TString MCname = "";
+  if(MC == "16")
+    MCname = filename(filename.Last('/')+1,12);
+  else
+      MCname = filename(filename.Last('/')+1,13);
+  
+  double pthatWeight = 1.0;
+  
+  //17g6a3 weights
+  if(MCname == "17g6a3_pthat1")
+    return 4.47e-11;
+  if(MCname == "17g6a3_pthat2")
+    return 9.83e-11;
+  if(MCname == "17g6a3_pthat3")
+    return 1.04e-10;
+  if(MCname == "17g6a3_pthat4")
+    return 1.01e-11;
+  
+  //16c3c weights
+  if(MCname == "16c3c_pthat1")
+    return 3.941701e-03;
+  if(MCname == "16c3c_pthat2")
+    return 2.001984e-03;
+  if(MCname == "16c3c_pthat3")
+    return 9.862765e-04 ;
+  if(MCname == "16c3c_pthat4")
+    return 9.862765e-04 ;
+
+  //18b10ab
+  if(MC == "18")
+    return Xsection/ntrial;
+ 
+  return 0.0;
+  
+}
 
 int main(int argc, char *argv[])
 {
@@ -44,7 +88,7 @@ int main(int argc, char *argv[])
     etabins[i] = etamin + i*etastep;
   }
   
-  const int nbinsphi = 40;
+  const int nbinsphi = 80;
   Double_t phibins[nbinsphi+1] = {};
   double phimin = -1.0*TMath::Pi();
   double phimax = 1.0*TMath::Pi();
@@ -53,53 +97,91 @@ int main(int argc, char *argv[])
     phibins[i] = phimin + i*phistep;
   }
   
-  const int nbinstrack = 20;
+  const int nbinstrack = 15;
   Double_t trackbins[nbinstrack+1] = {};
+  //Double_t trackbins[nbinstrack+1] = {1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 18.0, 20.0};//pPB
+  //Double_t trackbins[nbinstrack+1] = {0.5, 1.0,2.0,3.0,4.0,5.0,6.0, 8.0, 10.0, 13.0, 20.0};//pp bining
   double ptmin = 1;
-  double ptmax = 21;
+  double ptmax = 16;
   double ptstep = (ptmax-ptmin)/nbinstrack;
   for(int i = 0; i < nbinstrack+1; i++){
     trackbins[i] = ptmin + i*ptstep;
   }
   
-  TH1D h_Den("h_Den", "truth photons", 20, 10, 30);    
-  TH1D h_Num("h_Num", "reco photons filled with truthpt reco", 20, 10, 30);    
-  TH1D h_Num2("h_Num2", "reco photons filled with pt reco", 20, 10, 30);    
-  TH2D h_Correlation("h_Correlation", "", 20, 10, 30, 20, 10, 30);    
+  TH1D h_Den("h_Den", "", 20, 10, 30);    
+  TH1D h_Num("h_Num", "", 20, 10, 30);    
+  TH1D h_Reco("h_Reco", "", 20, 10, 30);    
+  TH2D h_Correlation("h_Correlation", "", 20, 10, 30, 20, 10, 30);
+  TH2D h_Num2D("h_Num2D","", nbinsphi, phibins, nbinseta, etabins);
+  TH2D h_Den2D("h_Den2D","", nbinsphi, phibins, nbinseta, etabins);
 
   h_Den.Sumw2();
   h_Num.Sumw2();
-  h_Num2.Sumw2(); 
+  h_Reco.Sumw2();
 
-  h_Den.SetTitle("; p_{T}^{truth} [GeV]; entries");
-  h_Num.SetTitle("; p_{T}^{Reco,truthpt} [GeV]; entries");
-  h_Num2.SetTitle("; p_{T}^{Reco,pt} [GeV]; entries");
+  h_Den.SetTitle("truth photons; p_{T}^{truth} [GeV]; entries");
+  h_Num.SetTitle("reco photons filled with truthpt reco; p_{T}^{Reco,truthpt} [GeV]; entries");
+  h_Reco.SetTitle("reco photons filled with pt reco; p_{T}^{Reco,pt} [GeV]; entries");
   h_Correlation.SetTitle("; True p_{T} [GeV]; Reconstructed p_{T} [GeV]");
+  h_Num2D.SetTitle(";#phi_{true}; #eta_{true}");
+  h_Den2D.SetTitle(";#phi_{true}; #eta_{true}");
 
-  TH1F hDen("hDen", "", nbinstrack, trackbins);
-  TH1F hNum("hNum","", nbinstrack, trackbins);
-  TH1F hNum2("hNum2","",nbinstrack, trackbins);
+  TH1F hTruth("hTruth", "", nbinstrack, trackbins);
+  TH1F hRecoTruth("hRecoTruth","", nbinstrack, trackbins);
+  TH1F hRecof("hRecof","",nbinstrack, trackbins);
   TH1F hReco("hReco","", nbinstrack,trackbins);
   TH1F hFake("hFake", "", nbinstrack, trackbins);
   TH1F hTrackCut("hTrackCut", "", 10, -0.5, 9.5);
-  TH2F hCorrelation("hCorrelation", "", nbinstrack, trackbins, nbinstrack, trackbins);
-  TH2F hRes_Pt("hRes_Pt", "", 200, 0, 10.0, 80, -50, 50);  
+  TH1F hTrackQuality("hTrackQuality", "", 20, -0.5, 19.5);
   
-  hDen.Sumw2();
-  hNum.Sumw2();
-  hNum2.Sumw2();
-  hFake.Sumw2();
-  hReco.Sumw2();
+  TH1F hTruth_eta("hTruth_eta","", nbinseta, etabins);
+  TH1F hRecoTruth_eta("hRecoTruth_eta","", nbinseta, etabins);
+  TH1F hReco_eta("hReco_eta","", nbinseta, etabins);
+  TH1F hTruth_phi("hTruth_phi","", nbinsphi, phibins);
+  TH1F hRecoTruth_phi("hRecoTruth_phi","", nbinsphi, phibins);
+  TH1F hReco_phi("hReco_phi","", nbinsphi, phibins);
+  
+  TH2D hRecoTruth2D("hRecoTruth2D","", nbinsphi, phibins, nbinseta, etabins);
+  TH2D hReco2D("hReco2D","", nbinsphi, phibins, nbinseta, etabins);
+  TH2D hTruth2D("hTruth2D","", nbinsphi, phibins, nbinseta, etabins);
+  TH2F hCorrelation("hCorrelation", "", nbinstrack, trackbins, nbinstrack, trackbins);
+  TH2F hCorrelation_cor("hCorrelation_cor", "", nbinstrack, trackbins, nbinstrack, trackbins);
+  TH2F hRes_Pt("hRes_Pt", "", 200, 0, 10.0, 80, -50, 50);
+  
+  TH1F hZvertex("hZvertex","",60, -30, 30);
 
-  hDen.SetTitle("; p_{T}^{true} [GeV/c]; entries");
-  hNum.SetTitle("; p_{T}^{Reco,Embed} [GeV/c]; entries");
-  hNum2.SetTitle("; p_{T}^{Reco} [GeV/c]; entries");
+  hTruth.Sumw2();
+  hRecoTruth.Sumw2();
+  hReco.Sumw2();
+  hFake.Sumw2();
+  hRecof.Sumw2();
+  hTruth_eta.Sumw2();
+  hRecoTruth_eta.Sumw2();
+  hReco_eta.Sumw2();
+  hTruth_phi.Sumw2();
+  hRecoTruth_phi.Sumw2();
+  hReco_phi.Sumw2();
+  hCorrelation.Sumw2();
+  hCorrelation_cor.Sumw2();
+  hZvertex.Sumw2();
+
+
+  hTruth.SetTitle("; p_{T}^{true} [GeV/c]; entries");
+  hRecoTruth.SetTitle("; p_{T}^{Reco,Embed} [GeV/c]; entries");
+  hReco.SetTitle("; p_{T}^{Reco} [GeV/c]; entries");
   hFake.SetTitle("; p_{T}^{reco} [GeV/c]; Fake Rate");
   hCorrelation.SetTitle("; True p_{T} [GeV/c]; Reconstructed p_{T} [GeV/c]");
- 
-  int TrackBit = 16;
-  int numEvents_tracks = 0;
-  int numEvents_clusters = 0;
+  hCorrelation_cor.SetTitle("; True p_{T} [GeV/c]; Reconstructed p_{T} [GeV/c]");
+  hRecoTruth2D.SetTitle(";#phi;#eta");
+  hReco2D.SetTitle(";#phi;#eta");
+  hTruth2D.SetTitle(";#phi;#eta");
+  hZvertex.SetTitle(";Z_{v} [cm]; counts");
+  
+  const int TrackBit = 16;//3 for TPC+ITS, 16 for ITS only 
+  int numEvents, numEvents_tracks, numEvents_clusters;
+  numEvents = numEvents_tracks = numEvents_clusters = 0;
+  double sumWeight = 0.0;
+  
   TApplication application("", &dummyc, dummyv);
   TCanvas* canvas = new TCanvas();
   
@@ -113,7 +195,7 @@ int main(int argc, char *argv[])
       exit(EXIT_FAILURE);
     }
     file->Print();
-        
+    
     // Get all the TTree variables from the file to open, I guess
     TTree *_tree_event = NULL;
     _tree_event = dynamic_cast<TTree *> (dynamic_cast<TDirectoryFile *>   (file->Get("AliAnalysisTaskNTGJ"))->Get("_tree_event"));
@@ -228,47 +310,61 @@ int main(int argc, char *argv[])
     _tree_event->SetBranchAddress("mc_truth_first_parent_pdg_code",mc_truth_first_parent_pdg_code);
     _tree_event->SetBranchAddress("eg_cross_section",&eg_cross_section);
     _tree_event->SetBranchAddress("eg_ntrial",&eg_ntrial);
-    
+   
 
     const double maxEta = 0.8;
-    Long64_t numEntries = 1000000;//_tree_event->GetEntries();
+    Long64_t totEvents = _tree_event->GetEntries();
+    Long64_t restrictEvents = 100000;
+    Long64_t numEntries = TMath::Min(totEvents,restrictEvents);
+    cout << numEntries << endl;
     // Loop over events
     for(Long64_t ievent = 0; ievent < numEntries ; ievent++){
     // for(Long64_t ievent = 0; ievent < 10000 ; ievent++){
       _tree_event->GetEntry(ievent);
       
       bool eventChange = true;
-      double weight = (double)eg_cross_section/(double)eg_ntrial;
+      
+      //Selecting pthat weights
+      double weight = (SetPthatWeights((TString)argv[iarg], (double)eg_cross_section, (double)eg_ntrial))/totEvents;
+      if(ievent%10000 == 0)
+	cout << weight << endl;
+      sumWeight += weight;
+
+      //event selection
+      //if(not( TMath::Abs(primary_vertex[2])<10.0)) continue; //vertex z position
+      hZvertex.Fill(primary_vertex[2]);
+      numEvents++;
 
       //loop over tracks
       for (int n = 0;  n< ntrack; n++){
+
 	//Track Cuts
-	/*
-	  track quality cut
-	  eta cut
-	  pt cut
-	  trigger selection cut
-	  its cluster chi^2 cut
-	  its cluster cut
-	  DCA_r = DCA_xy cut
-	  DCA_z cut
-	 */
 	hTrackCut.Fill(0);
+	//cout << (int)track_quality[n] << endl;
+	hTrackQuality.Fill((int)track_quality[n]);
 	if((track_quality[n]&TrackBit)==0) continue; hTrackCut.Fill(1);//track quality cut
 	if(TMath::Abs(track_eta[n])> maxEta) continue; hTrackCut.Fill(2);//eta cut
 	if(track_pt[n] < 0.15) continue; hTrackCut.Fill(3);//pt cut
-	if(track_its_chi_square[n]>36.0) continue; hTrackCut.Fill(5);//its cluster chi^2 cut
+	if(track_its_chi_square[n]>36.0) continue; hTrackCut.Fill(4);//its cluster chi^2 cut
 	if(TrackBit == 16)
 	  {
-	    if(track_its_ncluster[n] < 5) continue; 
+	    
+	    if(track_its_ncluster[n] < 4) continue; 
 	    hTrackCut.Fill(6);//its cluster cut
 	  }
 	if(TMath::Abs(track_dca_xy[n]) > 2.4) continue; hTrackCut.Fill(7);//distance of closest approach cut
 	if(TMath::Abs(track_dca_z[n]) > 3.2) continue; hTrackCut.Fill(8);//distance of closest approach cut
 	
-	hReco.Fill(track_pt[n],weight);
+	hRecof.Fill(track_pt[n],weight);
+	
+	if(track_pt[n] > 1){
+	  hReco_eta.Fill(track_eta[n]);
+	  hReco_phi.Fill(track_phi[n]);
+	  hReco2D.Fill(track_phi[n], track_eta[n]);
+	}
 
 	unsigned short index = track_mc_truth_index[n];
+	
 	//particles not associated with MC particle (i.e, secondaries or fakes)
 	if(index>65534){ 
 	  hFake.Fill(track_pt[n],weight);
@@ -281,10 +377,14 @@ int main(int argc, char *argv[])
 	     (TMath::Abs(mc_truth_pdg_code[index])!=2212)) continue;//*/
 	  if (eventChange) {numEvents_tracks++; eventChange = false;}
 	  
-	  hNum.Fill(mc_truth_pt[index],weight);
-	  hNum2.Fill(track_pt[n],weight);
+	  hRecoTruth.Fill(mc_truth_pt[index],weight);
+	  hReco.Fill(track_pt[n],weight);
 	  hCorrelation.Fill(mc_truth_pt[index], track_pt[n], weight);
+	  hCorrelation_cor.Fill(mc_truth_pt[index], track_pt[n], weight);
 	  hRes_Pt.Fill(mc_truth_pt[index], 100*(track_pt[n]-mc_truth_pt[index])/(mc_truth_pt[index]),weight);
+	  hRecoTruth_eta.Fill(mc_truth_eta[index]);
+	  hRecoTruth_phi.Fill(mc_truth_phi[index]);
+	  hRecoTruth2D.Fill(mc_truth_phi[index], mc_truth_eta[index]);
 	}//end if hasMCParticle
       }//end track loop
       
@@ -301,7 +401,10 @@ int main(int argc, char *argv[])
         if(TMath::Abs(mc_truth_eta[nTru])> maxEta) continue; //skip particles with |eta|>0.8
         
 	
-	hDen.Fill(mc_truth_pt[nTru],weight);
+	hTruth.Fill(mc_truth_pt[nTru],weight);
+	hTruth_eta.Fill(mc_truth_eta[nTru]);
+	hTruth_phi.Fill(mc_truth_phi[nTru]);
+	hTruth2D.Fill(mc_truth_phi[nTru], mc_truth_eta[nTru]);
       }//end loop over MC particles
 
 
@@ -324,6 +427,8 @@ int main(int argc, char *argv[])
 	//std::cout << " cluster pt " << cluster_pt[n] << " phi" << cluster_phi[n] << " eta " << cluster_eta[n] << std::endl;
 	Bool_t isTruePhoton = false;
         Float_t truth_pt = -999.0;
+        Float_t truth_eta = -999.0;
+        Float_t truth_phi = -999.0;
 	for(int counter = 0 ; counter<32; counter++){
 	  unsigned short index = cluster_mc_truth_index[n][counter];                   
 
@@ -336,14 +441,17 @@ int main(int argc, char *argv[])
           if( not (mc_truth_status[index] >0)) continue;        
           isTruePhoton = true;
           truth_pt     = mc_truth_pt[index];
+	  truth_phi    = mc_truth_phi[index];
+	  truth_eta    = mc_truth_eta[index];
 	}//end loop over indices
 	
 	if(isTruePhoton){
 	  //fill in this histogram only photons that can be traced to a generated non-decay photon.	
-            h_Num.Fill(truth_pt);
-            h_Num2.Fill(cluster_pt[n]); 
-	    h_Correlation.Fill(truth_pt, cluster_pt[n]);
-	    if (eventChange) {numEvents_clusters++; eventChange = false;}
+	  h_Num.Fill(truth_pt,weight);
+	  h_Reco.Fill(cluster_pt[n],weight); 
+	  h_Correlation.Fill(truth_pt, cluster_pt[n],weight);
+	  h_Num2D.Fill(truth_phi, truth_eta);
+	  if (eventChange) {numEvents_clusters++; eventChange = false;}
 	} 
       }//end loop on clusters
        
@@ -357,7 +465,7 @@ int main(int argc, char *argv[])
 	if(mc_truth_pdg_code[nmc]==22 && int(mc_truth_status[nmc])>0 &&  mc_truth_first_parent_pdg_code[nmc]==22){
 	  //std::cout << mc_truth_pt[nmc] << "phi " << mc_truth_phi[nmc] << " eta " << mc_truth_eta[nmc] << 
 	  //  " code: " << mc_truth_pdg_code[nmc] << " status " << int(mc_truth_status[nmc]) << " parentpdg " << mc_truth_first_parent_pdg_code[nmc] << std::endl;    
-	  h_Den.Fill(mc_truth_pt[nmc]);
+	  h_Den.Fill(mc_truth_pt[nmc],weight);
 	}
       } //end loop over mc truth particles
         
@@ -372,7 +480,7 @@ int main(int argc, char *argv[])
 
       h_Den.SetLineColor(2);
       THStack* hs = new THStack("hs","stack histo for plotting");
-      hs->Add(&h_Num2);
+      hs->Add(&h_Reco);
       hs->Add(&h_Den);
 
       if (ievent % 10000 == 0) {
@@ -386,59 +494,167 @@ int main(int argc, char *argv[])
   }//end loop over ntuples
   cout << numEvents_tracks << endl;
   cout << numEvents_clusters << endl;
-  /*const double tot_eta = 1.6;  
-  for(int i = 1; i < hNum2->GetNbinsX()+1; i++)
-    {
-      double dpt = hNum->GetBinWidth(i);
-      double content = hNum->GetBinContent(i);
-      double temp = content/((double)numEvents*dpt*tot_eta);
-      hNum->SetBinContent(i, temp);
-      double error = hNum->GetBinError(i);
-      double tempErr = error/((double)numEvents*dpt*tot_eta);
-      hNum->SetBinError(i, tempErr);
+  cout << sumWeight << endl;
 
-      dpt = hNum2->GetBinWidth(i);
-      content = hNum2->GetBinContent(i);
-      temp = content/((double)numEvents*dpt*tot_eta);
-      hNum2->SetBinContent(i, temp);
-      error = hNum2->GetBinError(i);
-      tempErr = error/((double)numEvents*dpt*tot_eta);
-      hNum2->SetBinError(i, tempErr);
-
-      dpt = hDen->GetBinWidth(i);
-      content = hDen->GetBinContent(i);
-      temp = content/((double)numEvents*dpt*tot_eta);
-      hDen->SetBinContent(i, temp);
-      error = hDen->GetBinError(i);
-      tempErr = error/((double)numEvents*dpt*tot_eta);
-      hDen->SetBinError(i, tempErr);
-      }*/
-
-  TFile* fout_cluster = new TFile("PhotonEfficiency_1Meve.root","RECREATE");
-
-  TGraphAsymmErrors* eff_cluster = new TGraphAsymmErrors(&h_Num, &h_Den);
-  eff_cluster->Write("Efficiency");
-  h_Den.Write("hTruth");
-  h_Num.Write("hRecoEmbed");
-  h_Num2.Write("hReco");
-  h_Correlation.Write();
-  fout_cluster->Close();
- 
-
-  TFile* fout_track = new TFile("TrackEfficiency_20GeV_start1GeV_1Meve.root","RECREATE");
-
-  TGraphAsymmErrors* eff = new TGraphAsymmErrors(&hNum, &hDen);
-  eff->SetTitle("; p_{T}^{true} ; #epsilon");
-  eff->Write("Efficiency");
-  hDen.Write("hTruth");
-  hNum.Write("hRecoEmbed");
-  hNum2.Write("hReco");
-  hCorrelation.Write();
-  hFake.Write("hFake");
-  hFake.Divide(&hReco);
-  hFake.Write("FakeRate");
-  fout_track->Close();
+  TH1D eventSelection("eventSelection","", 8, -0.5, 7.5);
   
+
+  const double tot_eta = 1.6;  
+  for(int i = 1; i < hReco.GetNbinsX()+1; i++)
+    {
+      double dpt, content, temp, error, tempErr;
+      dpt = content = temp = error = tempErr = 0.0;
+      
+      dpt = hRecoTruth.GetBinWidth(i);
+      content = hRecoTruth.GetBinContent(i);
+      temp = content/dpt;
+      hRecoTruth.SetBinContent(i, temp);
+      error = hRecoTruth.GetBinError(i);
+      tempErr = error/dpt;
+      hRecoTruth.SetBinError(i, tempErr);
+
+      dpt = hReco.GetBinWidth(i);
+      content = hReco.GetBinContent(i);
+      temp = content/dpt;
+      hReco.SetBinContent(i, temp);
+      error = hReco.GetBinError(i);
+      tempErr = error/dpt;
+      hReco.SetBinError(i, tempErr);
+
+      dpt = hTruth.GetBinWidth(i);
+      content = hTruth.GetBinContent(i);
+      temp = content/dpt;
+      hTruth.SetBinContent(i, temp);
+      error = hTruth.GetBinError(i);
+      tempErr = error/dpt;
+      hTruth.SetBinError(i, tempErr);
+
+    }
+
+  for(int x = 1; x < hCorrelation_cor.GetNbinsX()+1; x++)
+    {
+      for(int y = 1; y < hCorrelation_cor.GetNbinsY()+1; y++)
+	{
+	  double dx , dy, content, temp, contentErr, tempErr;
+	  dx = dy = content = temp = contentErr = tempErr = 0.0;
+	  dx = hCorrelation_cor.GetXaxis()->GetBinWidth(x);
+	  dy = hCorrelation_cor.GetYaxis()->GetBinWidth(y);
+	  content = hCorrelation_cor.GetBinContent(x, y);
+	  contentErr = hCorrelation_cor.GetBinError(x, y);
+
+	  temp = content/(dx*dy);
+	  hCorrelation_cor.SetBinContent(x, y, temp);
+	  tempErr = tempErr/(dx*dy);
+	  hCorrelation_cor.SetBinError(x, y, tempErr);
+
+	}
+    }
+  hCorrelation_cor.Scale(1/sumWeight);
+
+  hTrackCut.GetXaxis()->SetBinLabel(1,"All Tracks");
+  hTrackCut.GetXaxis()->SetBinLabel(2,"Track quality cut");
+  hTrackCut.GetXaxis()->SetBinLabel(3,"Track #eta cut");
+  hTrackCut.GetXaxis()->SetBinLabel(4,"pt cut");
+  hTrackCut.GetXaxis()->SetBinLabel(5,"Trigger cut");
+  hTrackCut.GetXaxis()->SetBinLabel(6,"ITS nCluster cut");
+  hTrackCut.GetXaxis()->SetBinLabel(7,"ITS #chi^{2} cut");
+  hTrackCut.GetXaxis()->SetBinLabel(8,"DCAr cut");
+  hTrackCut.GetXaxis()->SetBinLabel(9,"DCAz cut");
+
+  //TF1* gausfit = new TF1("gaus","gaus", -25,25);
+  //gausfit->SetLineColor(kRed);
+  //TGraphErrors* g_mean = new TGraphErrors();
+  //TGraphErrors* g_sigma = new TGraphErrors();
+  
+  //auto c1 = new TCanvas();
+   
+  /*//Study of the ITS-only track pT resolution
+  const Double_t bins[10] = {  0.1,          0.16681005,   0.27825594,   0.46415888 ,  0.77426368, 1.29154967,   2.15443469,   3.59381366,   5.9948425,   10.0};
+
+  int nbins = 9;
+  for(int i=0; i<nbins; i++){
+    double minpt = bins[i];
+    double maxpt = bins[i+1];
+    double binwidth = maxpt-minpt;
+    int minbin =  hRes_Pt.GetXaxis()->FindBin(minpt);
+    int maxbin =  hRes_Pt.GetXaxis()->FindBin(maxpt);
+    TH1D* h1 = hRes_Pt.ProjectionY("h", minbin, maxbin);
+    
+    h1->SetTitle("; (p_{T}^{reco}-p_{T}^{true})/p_{T}^{true} [%] ; counts");
+    h1->Draw();  
+    h1->GetYaxis()->SetNdivisions(5);
+    h1->GetXaxis()->SetNdivisions(5);
+    h1->GetYaxis()->SetTitle("counts");
+    h1->Fit(gausfit,"R");
+    h1->SetTitle("; (p_{T}^{reco}-p_{T}^{true})/p_{T}^{true} [%] ; counts");
+    gausfit->Draw("same");
+    //myText(0.18, 0.8, kBlack, Form("%2.1f < p_{T}^{truth} < %2.1f GeV", minpt, maxpt));
+    //myText(0.18, 0.74, kRed, Form("#mu = %2.1f [%]", gausfit->GetParameter(1)));
+    //myText(0.18, 0.68, kRed, Form("#sigma = %2.1f [%]", gausfit->GetParameter(2))); 
+    g_sigma->SetPoint(g_sigma->GetN(), (maxpt+minpt)/2.0, gausfit->GetParameter(2));     
+    g_sigma->SetPointError(g_sigma->GetN()-1, binwidth/2.0, gausfit->GetParError(2));
+    g_mean->SetPoint(g_mean->GetN(), (maxpt+minpt)/2.0, gausfit->GetParameter(1));
+    g_mean->SetPointError(g_mean->GetN()-1, binwidth/2.0, gausfit->GetParError(1));
+    
+    }*/
+  
+  //g_sigma->SetTitle("Relative resolution vs p_{T} ; p_{T}^{true} [GeV]; #sigma(p_{T})/p_{T} [%]"); 
+  //g_mean->SetTitle("; p_{T}^{true} [GeV]; Relative bias [%]");
+  
+  
+  bool makeClusterFile = false;
+  bool makeTrackFile = true;
+  
+  if(makeClusterFile)
+    {
+      TFile* fout_cluster = new TFile("PhotonEfficiency_pp_30GeV_2M_etaPhi.root","RECREATE");
+      
+      TGraphAsymmErrors* eff_cluster = new TGraphAsymmErrors(&h_Num, &h_Den);
+      eff_cluster->Write("Efficiency");
+      h_Den.Write("hTruth");
+      h_Num.Write("hRecoEmbed");
+      h_Reco.Write("hReco");
+      h_Correlation.Write();
+      h_Num2D.Write("hEtaPhi");
+      fout_cluster->Close();
+    }
+
+  if(makeTrackFile)
+    {
+      TFile* fout_track = new TFile(Form("TrackOutput/17g6a3_%i_1GeV16GeV_500K_eventDiv_4layers_new.root",TrackBit),"RECREATE");
+      
+      TGraphAsymmErrors* eff = new TGraphAsymmErrors(&hRecoTruth, &hTruth);
+      eff->SetTitle("; p_{T}^{true} ; #epsilon");
+      eff->Write("Efficiency");
+      //g_sigma->Write("g_sigma");
+      //g_mean->Write("g_mean");
+
+      hTruth.Write("hTruth");
+      hRecoTruth.Write("hRecoTruth");
+      hReco.Write("hReco");
+      hTruth_eta.Write("hTruth_eta");
+      hRecoTruth_eta.Write("hRecoEmbed_eta");
+      hReco_eta.Write("hReco_eta");
+      hTruth_phi.Write("hTruth_phi");
+      hRecoTruth_phi.Write("hRecoEmbed_phi");
+      hReco_phi.Write("hReco_phi");
+      hFake.Write("hFake");
+      hFake.Divide(&hRecof);
+      hFake.Write("FakeRate");
+      hZvertex.Write("hZvertex");
+      
+      hCorrelation.Write("hCorrelation");
+      hCorrelation_cor.Write("hCorrelation_cor");
+      hRecoTruth2D.Write("hRecoTruth_phiEta");
+      hReco2D.Write("hReco_phiEta");
+      hTruth2D.Write("hTruth_phiEta");
+
+      hTrackQuality.Write();
+      hTrackCut.Write();
+
+      fout_track->Close();
+    }
   std::cout << " ending " << std::endl;
   return EXIT_SUCCESS;
 }//end main
+
