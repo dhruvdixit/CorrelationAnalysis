@@ -39,20 +39,24 @@ int main(int argc, char *argv[])
   
   TString root_file = (TString)argv[1];
   std::cout << "Opening: " << (TString)argv[1] << std::endl;
+
   const H5std_string hdf5_file_name(argv[2]);
   TString hdf5_file = (TString)argv[2];
   fprintf(stderr,hdf5_file);
+
   size_t mix_start = atoi(argv[3]);
   size_t mix_end = atoi(argv[4]);
+
   int GeV_Track_Skim = atoi(argv[5]);
   fprintf(stderr,"\nMix Start is: %lu \n",mix_start);
   fprintf(stderr,"Mix End is: %lu \n",mix_end);
   fprintf(stderr,"Using %iGeV Track Skimmed from batch Script \n",GeV_Track_Skim);
-  std::cout<<"Output root file will be: "<<Form("Mix_Correlation_%1.1lu_%1.0lu_%luGeVTracks_13def.root",mix_start,mix_end,GeV_Track_Skim)<<std::endl;
+
   size_t nmix = 300;
   fprintf(stderr,"Number of Mixed Events: %i \n",nmix);
-  //Config File
 
+
+  //Config File
   FILE* config = fopen("Corr_config.yaml", "r");
   double DNN_min = 0;
   double DNN_max = 0;
@@ -70,8 +74,7 @@ int main(int argc, char *argv[])
   int n_eta_bins = 0;
   int n_phi_bins = 0;  
 
-  // Zt bins
-  //FIXME: Will have to likely set nztbins first, then initialize array
+  // zT & pT bins
   int nztbins = 7;
   float* ztbins;
   ztbins = new float[nztbins+1];
@@ -83,7 +86,7 @@ int main(int argc, char *argv[])
   ptbins[0] = 10.0; ptbins[1] = 11; ptbins[2] = 12.5; ptbins[3] = 16;
 
 
-  // Loop through config file
+  // Read/Loop through config file
   char line[MAX_INPUT_LENGTH];
   while (fgets(line, MAX_INPUT_LENGTH, config) != NULL) {
       if (line[0] == '#') continue;
@@ -284,9 +287,7 @@ int main(int argc, char *argv[])
   
 
   //LOOP OVER SAMPLES
-  //for (int iarg = 1; iarg < argc; iarg+=2) {
 
-    //TFile *file = TFile::Open((TString)argv[iarg]);
     TFile *file = TFile::Open(root_file);
 
     if (file == NULL) {
@@ -297,9 +298,12 @@ int main(int argc, char *argv[])
     
     TTree *_tree_event = dynamic_cast<TTree *>(file->Get("_tree_event"));
     if (_tree_event == NULL) {
-      std::cout << " fail " << std::endl;
-      exit(EXIT_FAILURE);
-    }  
+      _tree_event = dynamic_cast<TTree *>(file->Get("AliAnalysisTaskNTGJ/_tree_event"));
+      if (_tree_event == NULL) {
+	std::cout << " tree fail " << std::endl;
+	exit(EXIT_FAILURE);
+      }  
+    }
 
     //variables
     Double_t primary_vertex[3];
@@ -379,28 +383,8 @@ int main(int argc, char *argv[])
     
     std::cout << " Total Number of entries in TTree: " << _tree_event->GetEntries() << std::endl;
 
-    // UInt_t ntrack_max = 0;
-    // UInt_t ncluster_max = 0;
-
-    // fprintf(stderr, "\r%s:%d: %s\n", __FILE__, __LINE__, "Determining ntrack_max and ncluster_max needed for hdf5 hyperslab");
-    // for (Long64_t i = 0; i < _tree_event->GetEntries(); i++) {
-    //   _tree_event->GetEntry(i);
-    //   ntrack_max = std::max(ntrack_max, ntrack);
-    //   ncluster_max = std::max(ncluster_max, ncluster);
-    //   fprintf(stderr, "\r%s:%d: %llu", __FILE__, __LINE__, i);
-    // }
-
-//    ntrack_max = 2514;
-//    ncluster_max = 33;
-    UInt_t ntrack_max = 326;
-    UInt_t ncluster_max = 23;
-    // fprintf(stderr, "\n%s:%d: %s", __FILE__, __LINE__, "USING HARDCODED HDF5 DIMENSIONS");
-
-
-    fprintf(stderr, "\n%s:%d: maximum tracks:%i maximum clusters:%i\n", __FILE__, __LINE__, ntrack_max,ncluster_max);
-
+    //Using low level hdf5 API
     //open hdf5: Define size of data from file, explicitly allocate memory in hdf5 space and array size
-
     const H5std_string track_ds_name( "track" );
     H5File h5_file( hdf5_file_name, H5F_ACC_RDONLY );
     DataSet track_dataset = h5_file.openDataSet( track_ds_name );
@@ -410,15 +394,37 @@ int main(int argc, char *argv[])
     DataSet cluster_dataset = h5_file.openDataSet( cluster_ds_name );
     DataSpace cluster_dataspace = cluster_dataset.getSpace();
 
+    //Initialize Track Dimensions
+    const int track_ndims = track_dataspace.getSimpleExtentNdims();
+    hsize_t track_maxdims[track_ndims];
+    hsize_t trackdims[track_ndims];
+    track_dataspace.getSimpleExtentDims(trackdims, track_maxdims);
+
+    UInt_t ntrack_max = trackdims[1];
+    UInt_t NTrack_Vars = trackdims[2];
+
+    //Initalize Cluster Dimensions
+    const int cluster_ndims = cluster_dataspace.getSimpleExtentNdims();
+    hsize_t cluster_maxdims[cluster_ndims];
+    hsize_t clusterdims[cluster_ndims];
+    cluster_dataspace.getSimpleExtentDims(clusterdims, cluster_maxdims);
+
+    UInt_t ncluster_max = clusterdims[1];
+    UInt_t NCluster_Vars = clusterdims[2];
+
+    fprintf(stderr, "\n%s:%d: n track variables:%i n cluster variables:%i\n", __FILE__, __LINE__, NTrack_Vars,NCluster_Vars);
+    fprintf(stderr, "\n%s:%d: maximum tracks:%i maximum clusters:%i\n", __FILE__, __LINE__, ntrack_max,ncluster_max);
+
+
     //Define array hyperslab will be read into
-    float track_data_out[1][ntrack_max][10];
-    float cluster_data_out[1][ncluster_max][5];
+    float track_data_out[1][ntrack_max][NTrack_Vars];
+    float cluster_data_out[1][ncluster_max][NCluster_Vars];
 
     //Define hyperslab size and offset in  FILE;
     hsize_t track_offset[3] = {0, 0, 0};
-    hsize_t track_count[3] = {1, ntrack_max, 10};
+    hsize_t track_count[3] = {1, ntrack_max, NTrack_Vars};
     hsize_t cluster_offset[3] = {0, 0, 0};
-    hsize_t cluster_count[3] = {1, ncluster_max, 5};
+    hsize_t cluster_count[3] = {1, ncluster_max, NCluster_Vars};
 
     track_dataspace.selectHyperslab( H5S_SELECT_SET, track_count, track_offset );
     cluster_dataspace.selectHyperslab( H5S_SELECT_SET, cluster_count, cluster_offset );
@@ -426,18 +432,17 @@ int main(int argc, char *argv[])
 
     //Define the memory dataspace to place hyperslab
     const int RANK_OUT = 3; //# of Dimensions
-    hsize_t track_dimsm[3] = {1, ntrack_max, 10};
-    DataSpace track_memspace( RANK_OUT, track_dimsm );
-    hsize_t cluster_dimsm[3] = {1, ncluster_max, 5};
-    DataSpace cluster_memspace( RANK_OUT, cluster_dimsm );
+    DataSpace track_memspace( RANK_OUT, trackdims );
+    DataSpace cluster_memspace( RANK_OUT, clusterdims );    
+    //FIXME: Can reduce rank to 2
 
     //Define memory offset for hypreslab starting at begining:
     hsize_t track_offset_out[3] = {0};
     hsize_t cluster_offset_out[3] = {0};
 
     //define Dimensions of array, for writing slab to array
-    hsize_t track_count_out[3] = {1, ntrack_max, 10};
-    hsize_t cluster_count_out[3] = {1, ncluster_max, 5};
+    hsize_t track_count_out[3] = {1, ntrack_max, NTrack_Vars};
+    hsize_t cluster_count_out[3] = {1, ncluster_max, NCluster_Vars};
 
     //define space in memory for hyperslab, then write from file to memory
     track_memspace.selectHyperslab( H5S_SELECT_SET, track_count_out, track_offset_out );
@@ -471,7 +476,7 @@ int main(int argc, char *argv[])
 	for (Long64_t imix = 0; imix < mix_range; imix++){
 	  Long64_t mix_event = Mix_Events[imix];
 	  //fprintf(stderr,"%s:%d: Mixed Event: %lu from 13c hdf5\n",__FILE__, __LINE__, mix_event);
-	  //if (mix_event == ievent) continue; //not needed for gamma-MB pairing
+	  //if (mix_event == ievent) continue; //not needed for gamma-MB pairing: Different Triggers
 	  
 	  if(mix_event >= 9999999) continue;  
 
@@ -484,7 +489,7 @@ int main(int argc, char *argv[])
 	  cluster_dataspace.selectHyperslab( H5S_SELECT_SET, cluster_count, cluster_offset );
 	  cluster_dataset.read( cluster_data_out, PredType::NATIVE_FLOAT, cluster_memspace, cluster_dataspace );
 
-	  //MIXED associated
+	  //MIX with Associated Tracks
 	  //const int TrackCutBit =16;
 	  for (ULong64_t itrack = 0; itrack < ntrack_max; itrack++) {
 	    if (std::isnan(track_data_out[0][itrack][1])) continue;
@@ -550,7 +555,10 @@ int main(int argc, char *argv[])
 
 
     // Write to fout    
-    TFile* fout = new TFile(Form("InputData/Mix_Correlation_%1.1lu_%1.0lu_%luGeVTracks_13def.root",mix_start,mix_end,GeV_Track_Skim),"RECREATE");
+    size_t lastindex = std::string(root_file).find_last_of("."); 
+    std::string rawname = std::string(root_file).substr(0, lastindex);
+    TFile* fout = new TFile(Form("InputData/%s_%s-MinBias_%luGeVTracks_%1.1lu_%1.0lu.root",rawname.data(),rawname.data(),mix_start,mix_end,GeV_Track_Skim),"RECREATE");
+
     for (int ipt = 0; ipt<nptbins; ipt++){    
       for (int izt = 0; izt<nztbins; izt++){
 	Corr[izt+ipt*nztbins]->Write();
