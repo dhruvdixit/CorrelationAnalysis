@@ -1,4 +1,4 @@
-#include <TFile.h>
+ #include <TFile.h>
 #include <TTree.h>
 #include <TLorentzVector.h>
 
@@ -56,9 +56,10 @@ int main(int argc, char *argv[])
   fprintf(stderr,"Number of Mixed Events: %i \n",nmix);
 
   //Config File
-  FILE* config = fopen("Corr_config.yaml", "r");
+  FILE* config = fopen("../Corr_config.yaml", "r");
   double DNN_min = 0;
   double DNN_max = 0;
+  double Lambda0_cut = 0;
   double pT_min = 0;
   double pT_max = 0;
   double Eta_max = 0;
@@ -73,7 +74,8 @@ int main(int argc, char *argv[])
   double deta_max = 0;
   isolationDet determiner = CLUSTER_ISO_ITS_04; //replaced by config file. Check on Print
   int n_eta_bins = 0;
-  int n_phi_bins = 0;  
+  int n_phi_bins = 0;
+  std::string shower_shape = "DNN";
 
   // zT & pT bins
   int nztbins = 7;
@@ -110,6 +112,10 @@ int main(int argc, char *argv[])
           DNN_max = atof(value);
           std::cout << "DNN_max: " << DNN_max << std::endl; }
 
+      else if (strcmp(key,"Lambda0_cut") == 0){
+	Lambda0_cut = atof(value);
+	std::cout << "Lambda0 cut at: " <<Lambda0_cut <<std::endl;}
+
       else if (strcmp(key, "pT_min") == 0) {
           pT_min = atof(value);
           std::cout << "pT_min: " << pT_min << std::endl; }
@@ -130,7 +136,7 @@ int main(int argc, char *argv[])
         Cluster_DtoBad = atof(value);
 	std::cout << "Cluster_DtoBad: "<< Cluster_DtoBad << std::endl;}
 
-      else if (strcmp(key, "Cluster_Number_Local_Maxima") == 0){
+      else if (strcmp(key, "Cluster_N_Local_Maxima") == 0){
         Cluster_NLocal_Max = atof(value);
 	std::cout << "Cluster_NLocal_Max: "<< Cluster_NLocal_Max << std::endl;}
 
@@ -230,6 +236,12 @@ int main(int argc, char *argv[])
               exit(EXIT_FAILURE); }
       }
 
+      else if (strcmp(key, "Shower_Shape") == 0){
+	shower_shape = value;
+	std::cout<<"Shower Shape: "<<shower_shape.data()<<std::endl;
+      }
+      
+
       else std::cout << "WARNING: Unrecognized keyvariable " << key << std::endl;
   
   }
@@ -260,6 +272,19 @@ int main(int argc, char *argv[])
   float N_Signal_Triggers = 0;
   float N_BKGD_Triggers = 0;
   
+
+  TH1D* z_Vertices_individual = new TH1D("Primary_Vertex_root", "Z-vertex (ROOT)",240, -12, 12);
+  TH1D* z_Vertices_hdf5 = new TH1D("Primary_Vertex_hdf5", "Z-vertex (hdf5)", 240,-12, 12);
+  TH1D* z_Vertices = new TH1D("Delta_Primary_Vertex", "#Delta V_z Distribution", 240,-12, 12);
+
+  TH1D* Multiplicity_individual = new TH1D("Multiplicity_root", "Multiplicity (ROOT)", 1000, 0, 1000);
+  TH1D* Multiplicity_hdf5 = new TH1D("Multplicity_hdf5", "Multiplicity (hdf5)", 500, 0, 1000);
+  TH1D* Multiplicity = new TH1D("Delta_Multiplicity", "#Delta Multiplicit Distribution", 500, 0, 1000);
+
+  TH2D* N_ME = new TH2D("N_ME", "Distribution No. Mixed Events Passed",300,0,300,500,0,1000);
+
+
+
   //FIXME: Add to config file
 
     for (int ipt = 0; ipt <nptbins; ipt++) {
@@ -274,19 +299,19 @@ int main(int argc, char *argv[])
       for (int izt = 0; izt<nztbins; izt++){
 
       Corr[izt+ipt*nztbins] = new TH2D(Form("Correlation__pT%1.0f_%1.0f__zT%1.0f_zT%1.0f",ptbins[ipt],ptbins[ipt+1],
-      10*ztbins[izt],10*ztbins[izt+1]),"#gamma-H [all] Correlation", n_phi_bins,0,M_PI, n_eta_bins, -1.4, 1.4);
+      100*ztbins[izt],100*ztbins[izt+1]),"#gamma-H [all] Correlation", n_phi_bins,0,M_PI, n_eta_bins, -1.4, 1.4);
 
       Corr[izt+ipt*nztbins]->Sumw2();
       Corr[izt+ipt*nztbins]->SetMinimum(0.);
 
       IsoCorr[izt+ipt*nztbins] = new TH2D(Form("DNN%i_Correlation__pT%1.0f_%1.0f__zT%1.0f_zT%1.0f",1,ptbins[ipt],ptbins[ipt+1],
-      10*ztbins[izt],10*ztbins[izt+1]),"#gamma-H [Iso] Correlation", n_phi_bins,0,M_PI,n_eta_bins, -1.4, 1.4);
+      100*ztbins[izt],100*ztbins[izt+1]),"#gamma-H [Iso] Correlation", n_phi_bins,0,M_PI,n_eta_bins, -1.4, 1.4);
 
       IsoCorr[izt+ipt*nztbins]->Sumw2();
       IsoCorr[izt+ipt*nztbins]->SetMinimum(0.);
 
       BKGD_IsoCorr[izt+ipt*nztbins] = new TH2D(Form("DNN%i_Correlation__pT%1.0f_%1.0f__zT%1.0f_zT%1.0f",2,ptbins[ipt],ptbins[ipt+1],
-      10*ztbins[izt],10*ztbins[izt+1]),"#gamma-H [AntiIso] Correlation", n_phi_bins,0,M_PI, n_eta_bins, -1.4, 1.4);
+      100*ztbins[izt],100*ztbins[izt+1]),"#gamma-H [AntiIso] Correlation", n_phi_bins,0,M_PI, n_eta_bins, -1.4, 1.4);
 
       BKGD_IsoCorr[izt+ipt*nztbins]->Sumw2();
       BKGD_IsoCorr[izt+ipt*nztbins]->SetMinimum(0.);
@@ -300,7 +325,7 @@ int main(int argc, char *argv[])
     TFile *file = TFile::Open(root_file);
 
     if (file == NULL) {
-      std::cout << " fail" << std::endl;
+      std::cout << " file fail" << std::endl;
       exit(EXIT_FAILURE);
     }
     file->Print();
@@ -503,13 +528,17 @@ int main(int argc, char *argv[])
       float multiplicity_sum = 0;
       for (int k = 0; k < 64; k++)  multiplicity_sum += multiplicity_v0[k];
 
+      int ME_pass_Counter = 0;
+
+      bool first_cluster = true;
       for (ULong64_t n = 0; n < ncluster; n++) {
 	if( not(cluster_pt[n]>pT_min and cluster_pt[n]<pT_max)) continue;   //select pt of photons
 	if( not(TMath::Abs(cluster_eta[n])<Eta_max)) continue;              //cut edges of detector                                                                          
         if( not(cluster_ncell[n]>Cluster_min)) continue;                    //removes clusters with 1 or 2 cells 
 	if( not(cluster_e_cross[n]/cluster_e[n]>EcrossoverE_min)) continue; //removes "spiky" clusters
         if( not(cluster_distance_to_bad_channel[n]>=Cluster_DtoBad)) continue; //removes clusters near bad channels
-        if( not(cluster_nlocal_maxima[n] < Cluster_NLocal_Max)) continue; //require to have at most 2 local maxima.
+        //if( not(cluster_nlocal_maxima[n] < Cluster_NLocal_Max)) continue; //require to have at most 2 local maxima.
+        if( not(cluster_nlocal_maxima[n] < 3)) continue; //require to have at most 2 local maxima.
 
         float isolation;
         if (determiner == CLUSTER_ISO_TPC_04) isolation = cluster_iso_tpc_04[n];
@@ -517,6 +546,28 @@ int main(int argc, char *argv[])
         else if (determiner == CLUSTER_FRIXIONE_TPC_04_02) isolation = cluster_frixione_tpc_04_02[n];
         else isolation = cluster_frixione_its_04_02[n];
 
+	Bool_t Signal = false;
+        Bool_t Background = false;
+
+        if (strcmp(shower_shape.data(),"Lambda")== 0) {
+          if ((cluster_lambda_square[n][0] < Lambda0_cut))
+            Signal = true;
+
+          if ((cluster_lambda_square[n][0] > Lambda0_cut))
+            Background = true;
+        }
+
+        else if (strcmp(shower_shape.data(),"DNN")==0){
+          if ((cluster_s_nphoton[n][1] > DNN_min) && (cluster_s_nphoton[n][1]<DNN_max))
+            Signal = true;
+          if (cluster_lambda_square[n][0] > Lambda0_cut)
+            Background = true;
+        }
+
+	if(first_cluster){
+	  z_Vertices_individual->Fill(primary_vertex[2]);
+	  Multiplicity_individual->Fill(multiplicity_sum);
+	}
 
 	Long64_t mix_range = mix_end-mix_start+1;
 	for (Long64_t imix = mix_start; imix < mix_end+1; imix++){
@@ -539,11 +590,20 @@ int main(int argc, char *argv[])
 	  event_dataspace.selectHyperslab( H5S_SELECT_SET, event_count, event_offset );
 	  event_dataset.read( event_data_out, PredType::NATIVE_FLOAT, event_memspace, event_dataspace );
 
+	  //Fill ∆Event Distro's
+	  if (first_cluster){
+	    z_Vertices->Fill(TMath::Abs(event_data_out[0][0] - primary_vertex[2]));
+	    z_Vertices_hdf5->Fill(event_data_out[0][0]);
+	    Multiplicity->Fill(TMath::Abs(event_data_out[0][1] - multiplicity_sum));
+	    Multiplicity_hdf5->Fill(event_data_out[0][1]);
+	  }
+
 	  //Cut Paring Tails
 	  if (std::isnan(event_data_out[0][0])) continue;
 	  if (std::isnan(event_data_out[0][1])) continue;
-	  if (std::abs(primary_vertex[2]-event_data_out[0][0]) > 2);
-	  if (std::abs(multiplicity_sum - event_data_out[0][1]) > 40);
+	  if (std::abs(primary_vertex[2]-event_data_out[0][0]) > 2) continue;
+	  if (std::abs(multiplicity_sum - event_data_out[0][1]) > 40) continue;
+	  if (first_cluster) ME_pass_Counter ++;  //simple conuter for ME that pass
 
 	  //MIX with Associated Tracks
 	  for (ULong64_t itrack = 0; itrack < ntrack_max; itrack++) {
@@ -582,15 +642,13 @@ int main(int argc, char *argv[])
 		  if(zt>ztbins[izt] and  zt<ztbins[izt+1]){
 
 		    if(isolation< iso_max){
-		      if (cluster_s_nphoton[n][1] > DNN_min && cluster_s_nphoton[n][1] < DNN_max){
-			IsoCorr[izt+ipt*nztbins]->Fill(DeltaPhi,DeltaEta);
-		      }
-		    }
+		      if (Signal)
+			IsoCorr[izt+ipt*nztbins]->Fill(DeltaPhi,DeltaEta);}
+
 		    if(isolation<iso_max){
-		      if (cluster_s_nphoton[n][1] > 0.0 && cluster_s_nphoton[n][1] < 0.3){ //sel deep photons 
-			BKGD_IsoCorr[izt+ipt*nztbins]->Fill(DeltaPhi,DeltaEta);
-		      }
-		    }
+		      if (Background)
+			BKGD_IsoCorr[izt+ipt*nztbins]->Fill(DeltaPhi,DeltaEta);}
+
 		    Corr[izt+ipt*nztbins]->Fill(DeltaPhi,DeltaEta);
 		  }//if in zt bin
 		} // end loop over zt bins
@@ -598,10 +656,10 @@ int main(int argc, char *argv[])
 	    }//end pt loop bin
 	  }//end loop over tracks
 	}//end loop over mixed events
-      }//end loop on clusters. 
-      
+	first_cluster = false;
+      }//end loop on clusters.
+      N_ME->Fill(ME_pass_Counter,multiplicity_sum);       
     } //end loop over events
-    
     //}//end loop over samples
 
 
@@ -609,7 +667,15 @@ int main(int argc, char *argv[])
     size_t lastindex = std::string(root_file).find_last_of("."); 
     std::string rawname = std::string(root_file).substr(0, lastindex);
     //std::string rawname = std::string(argv[1]);
-    TFile* fout = new TFile(Form("%s_%luGeVTracks_Correlation_%1.1lu_to_%1.1lu.root",rawname.data(),GeV_Track_Skim,mix_start,mix_end),"RECREATE");
+
+    TFile* fout;
+    if (strcmp(shower_shape.data(),"Lambda")== 0)
+      fout = new TFile(Form("%s_%luGeVTracks_Correlation_Lambda_%1.1lu_to_%1.1lu.root",rawname.data(),GeV_Track_Skim,mix_start,mix_end),"RECREATE");
+    else if (strcmp(shower_shape.data(),"DNN")== 0)
+      fout = new TFile(Form("%s_%luGeVTracks_Correlation_DNN_%1.1lu_to_%1.1lu.root",rawname.data(),GeV_Track_Skim,mix_start,mix_end),"RECREATE");
+    else
+      fout = new TFile(Form("%s_%luGeVTracks_Correlation_%1.1lu_to_%1.1lu.root",rawname.data(),GeV_Track_Skim,mix_start,mix_end),"RECREATE");
+
 
     for (int ipt = 0; ipt<nptbins; ipt++){    
       for (int izt = 0; izt<nztbins; izt++){
@@ -622,6 +688,14 @@ int main(int argc, char *argv[])
 	BKGD_IsoCorr[izt+ipt*nztbins]->Write();	
       }
     }
+    z_Vertices->Write();
+    Multiplicity->Write();
+    z_Vertices_individual->Write();
+    z_Vertices_hdf5->Write();
+    Multiplicity_individual->Write();
+    Multiplicity_hdf5->Write();
+    N_ME->Write();
+
     fout->Close();     
     
     std::cout << " ending " << std::endl;
