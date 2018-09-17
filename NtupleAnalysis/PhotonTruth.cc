@@ -300,6 +300,9 @@ int main(int argc, char *argv[])
   TH1D h_jetpt_truth_its("h_jetpt_truth_its", "truth jet pt its", 30, 0, 30);
   TH1D h_jetpt_truthreco_its("h_jetpt_truthreco_its", "reco jet truth pt (numerator of efficiency)", 30, 0, 30);
   TH1D h_jetpt_reco_its("h_jetpt_reco_its", "reco jet reco pt", 30, 0, 30);
+  TH1D h_jetpt_truthreco_within_its("h_jetpt_truthreco_within_its", "", 30, 0, 30);
+  TH1D h_jetpt_truthreco_lost_its("h_jetpt_truthreco_lost_its", "", 30, 0, 30);
+  TH1D h_jetpt_truthreco_found_its("h_jetpt_truthreco_found_its", "", 30, 0, 30);
   TH1F h_jetEta_truth_its("h_jetEta_truth_its","", nbinseta, etabins);
   TH1F h_jetEta_truthreco_its("h_jetEta_truthreco_its","", nbinseta, etabins);
   TH1F h_jetEta_reco_its("h_jetEta_reco_its","", nbinseta, etabins);
@@ -319,6 +322,9 @@ int main(int argc, char *argv[])
   h_jetpt_truth_its.Sumw2();
   h_jetpt_truthreco_its.Sumw2();
   h_jetpt_reco_its.Sumw2();
+  h_jetpt_truthreco_within_its.Sumw2();
+  h_jetpt_truthreco_lost_its.Sumw2();
+  h_jetpt_truthreco_found_its.Sumw2();
   h_jetpt_truth_tpc.Sumw2();
   h_jetpt_truthreco_tpc.Sumw2();
   h_jetpt_reco_tpc.Sumw2();
@@ -334,6 +340,10 @@ int main(int argc, char *argv[])
   h_jetRes_Phi_its.Sumw2();
 
  
+  h_jetpt_reco_its.SetTitle(";#p_{T} [GeV/c];dN/dp_{T}");
+  h_jetpt_truthreco_within_its.SetTitle(";p_{T}^{true} [GeV/c];dN/dp_{T}");
+  h_jetpt_truthreco_lost_its.SetTitle(";p_{T}^{true} [GeV/c];dN/dp_{T}");
+  h_jetpt_truthreco_found_its.SetTitle(";p_{T}^{true} [GeV/c];dN/dp_{T}");
   h_jetpt_correlation_its.SetTitle("Jet Response Matrix;p_{T}^{true};p_{T}^{reco}");
   h_jetpt_correlation2_its.SetTitle("Jet Response Matrix - p_{T}^{reco} > 5 GeV/c;p_{T}^{true};p_{T}^{reco}");
   h_jetRes_Pt_its.SetTitle("Jet Resolution Response;p_{T}^{true} [GeV/c];(p_{T}^{reco}-p_{T}^{true})/p_{T}^{true} [%]");
@@ -825,8 +835,9 @@ int main(int argc, char *argv[])
 
       //loop over truth jets
       for (ULong64_t ijet = 0; ijet < njet_truth_ak04; ijet++) {
-	if(not (jet_truth_ak04_pt[ijet]>jetptmin)) continue;
 	if(not(TMath::Abs(jet_truth_ak04_eta[ijet])<0.5)) continue;
+	
+	if(not (jet_truth_ak04_pt[ijet]>jetptmin)) continue;
 	h_jetpt_truth.Fill(jet_truth_ak04_pt[ijet], weight);
 	h_jetEta_truth_its.Fill(jet_truth_ak04_eta[ijet]);
 	h_jetPhi_truth_its.Fill(jet_truth_ak04_phi[ijet]);
@@ -836,31 +847,40 @@ int main(int argc, char *argv[])
       std::set<int> temp; //to store truth indices associated with reco jets
       std::vector<pair<int, float>> tempRecoPt; //to store truth indices associated with reco jets and recojet pt
       for (ULong64_t ijet = 0; ijet < njet_ak04its; ijet++) { 
+
+	bool missedJet = false;	
+	if(TMath::Abs(jet_ak04its_eta_truth[ijet])<0.5)//true jet within acceptance
+	  {
+	    h_jetpt_truthreco_within_its.Fill(jet_ak04its_pt_truth[ijet],weight);
+	    missedJet = true;
+	  }
+	
+	if(TMath::Abs(jet_ak04its_eta_raw[ijet])>0.5)//reco jet outside
+	  {
+	    if(missedJet)
+	      h_jetpt_truthreco_lost_its.Fill(jet_ak04its_pt_truth[ijet],weight);
+	    continue;
+	  }
+	if(missedJet)
+	  h_jetpt_truthreco_found_its.Fill(jet_ak04its_pt_truth[ijet],weight);
+
+	h_jetpt_correlation_its.Fill(jet_ak04its_pt_truth[ijet],jet_ak04its_pt_raw[ijet], weight);
 	if(not (jet_ak04its_pt_raw[ijet]>jetptmin)) continue;
-	if(not (TMath::Abs(jet_ak04its_eta_raw[ijet])  <0.5 ) ) continue;
 	//if((jet_ak04its_pt_raw[ijet]>jetptmin) && (TMath::Abs(jet_ak04its_eta_raw[ijet])  <0.5 ))
 	h_jetpt_reco_its.Fill(jet_ak04its_pt_raw[ijet], weight);
 	h_jetEta_reco_its.Fill(jet_ak04its_eta_raw[ijet]);
 	h_jetPhi_reco_its.Fill(jet_ak04its_phi_raw[ijet]);
 	h_jet2D_reco_its.Fill(jet_ak04its_phi_raw[ijet], jet_ak04its_eta_raw[ijet]);
-	  
-	//temp.insert(jet_ak04its_truth_index_z_reco[ijet][0]);
-	//std::pair<int, float> recoIndexPt (jet_ak04its_truth_index_z_reco[ijet][0],jet_ak04its_pt_raw[ijet]);
-	//tempRecoPt.emplace_back(jet_ak04its_truth_index_z_reco[ijet][0],jet_ak04its_pt_raw[ijet]);
-	//int index = jet_ak04its_truth_index_z_reco[ijet][0];
-	//if(index>0){
-	//if(not(TMath::Abs(jet_truth_ak04_eta[ijet])<0.5)) continue;
+	
 	h_jetpt_truthreco_its.Fill(jet_ak04its_pt_truth[ijet],weight);
-	h_jetpt_correlation_its.Fill(jet_ak04its_pt_truth[ijet],jet_ak04its_pt_raw[ijet], weight);
 	h_jetEta_truthreco_its.Fill(jet_ak04its_eta_truth[ijet]);
 	h_jetPhi_truthreco_its.Fill(jet_ak04its_phi_truth[ijet]);
 	h_jet2D_truthreco_its.Fill(jet_ak04its_phi_truth[ijet], jet_ak04its_eta_truth[ijet]);
-	//if(jet_ak04its_pt_raw[ijet] > 5.0)
-	//{
+	
 	h_jetpt_correlation2_its.Fill(jet_ak04its_pt_truth[ijet], jet_ak04its_pt_raw[ijet], weight);	
 	h_jetRes_Pt_its.Fill(jet_ak04its_pt_truth[ijet], 100*(jet_ak04its_pt_raw[ijet]-jet_ak04its_pt_truth[ijet])/(jet_ak04its_pt_truth[ijet]),weight);
 	h_jetRes_Phi_its.Fill(jet_ak04its_phi_truth[ijet], (jet_ak04its_phi_raw[ijet]-jet_ak04its_phi_truth[ijet]));
-	//}
+	
 	
       } //end loop over reco its jets
       
@@ -1165,11 +1185,14 @@ int main(int argc, char *argv[])
 
   if(makeJetFile)
     {
-      TFile* fout_jet = new TFile(Form("JetOutput/MC/%s_Jets_0GeV30GeV_200K_8GeVcut_phiRes.root", MCname.Data()),"RECREATE");
+      TFile* fout_jet = new TFile(Form("JetOutput/MC/%s_Jets_0GeV30GeV_200K_8GeVcut_jetFinding.root", MCname.Data()),"RECREATE");
       
       h_jetpt_truth.Write("hTruth");
       h_jetpt_truthreco_its.Write("hRecoTruth_its");
       h_jetpt_reco_its.Write("hReco_its");
+      h_jetpt_truthreco_lost_its.Write("hRecoTruth_lost_its");
+      h_jetpt_truthreco_found_its.Write("hRecoTruth_found_its");
+      h_jetpt_truthreco_within_its.Write("hRecoTruth_within_its");
       h_jetpt_correlation_its.Write("hCorrelation_its");  
       h_jetpt_correlation2_its.Write("hCorrelation2_its");
       h_jetRes_Pt_its.Write("hRes_Pt_its");
