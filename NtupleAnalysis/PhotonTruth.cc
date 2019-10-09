@@ -182,17 +182,17 @@ int main(int argc, char *argv[])
     trackbins[i] = ptmin + i*ptstep;
   }//*/
   
-  const int nbinscluster = 14;
+  const int nbinscluster = 55;
   //Double_t clusterbins[nbinscluster+1] = {12.0 , 14.06198608, 16.47828771, 19.30978769, 22.62783047, 26.51601976, 31.07232506, 36.4115502 , 42.668226  , 50.0};//geom binning
-  Double_t clusterbins[nbinscluster+1] = {5.00, 6.00, 7.00, 8.00, 9.00, 10.00, 12.00, 14.00, 16.00, 18.00, 20.00, 25.00, 30.00, 40.00, 60.00};//nbinscluster = 14, Erwann binning
-  //Double_t clusterbins[nbinscluster+1] = {};
+  //Double_t clusterbins[nbinscluster+1] = {5.00, 6.00, 7.00, 8.00, 9.00, 10.00, 12.00, 14.00, 16.00, 18.00, 20.00, 25.00, 30.00, 40.00, 60.00};//nbinscluster = 14, Erwann binning
+  Double_t clusterbins[nbinscluster+1] = {};
   double Emin = 5;
   double Emax = 60;
   double Estep = (Emax-Emin)/nbinscluster;
   for(int i = 0; i < nbinscluster+1; i++)
     {
       clusterbins[i] = Emin + i*Estep;
-    }
+    }//*/
 
   TH1D h_Den("h_Den", "", nbinscluster, clusterbins);
   TH1D h_Den_emcal("h_Den_emcal", "", nbinscluster, clusterbins);
@@ -252,10 +252,11 @@ int main(int argc, char *argv[])
   hClusterCut.GetXaxis()->SetBinLabel(4,"exoticity cut");
   hClusterCut.GetXaxis()->SetBinLabel(5,"local maxima cut");
   hClusterCut.GetXaxis()->SetBinLabel(6,"distance to bad channel");
-  hClusterCut.GetXaxis()->SetBinLabel(7,"isolation cut");
-  hClusterCut.GetXaxis()->SetBinLabel(8,"lambda cut");
-  hClusterCut.GetXaxis()->SetBinLabel(9,"#eta cut");
-  hClusterCut.GetXaxis()->SetBinLabel(10,"PHOS cut");
+  hClusterCut.GetXaxis()->SetBinLabel(7,"time cut");
+  hClusterCut.GetXaxis()->SetBinLabel(8,"#eta cut");
+  hClusterCut.GetXaxis()->SetBinLabel(9,"isolation cut");
+  hClusterCut.GetXaxis()->SetBinLabel(10,"lambda cut");
+  hClusterCut.GetXaxis()->SetBinLabel(11,"PHOS cut");
   
   //track histograms
   TH1F hTruth("hTruth", "", nbinstrack, trackbins);
@@ -477,6 +478,7 @@ int main(int argc, char *argv[])
     Double_t primary_vertex[3];
     Float_t ue_estimate_its_const;
 
+    //track variables
     UInt_t ntrack;
     Float_t track_e[NTRACK_MAX];
     Float_t track_pt[NTRACK_MAX];
@@ -494,13 +496,15 @@ int main(int argc, char *argv[])
     Float_t track_tpc_chi_square[NTRACK_MAX];
     Float_t track_its_chi_square_constrainedVsGlobal[NTRACK_MAX];
     unsigned short track_mc_truth_index[NTRACK_MAX];
-        
+
+    //cluster variables
     UInt_t ncluster;
     Float_t cluster_e[NTRACK_MAX];
     Float_t cluster_e_cross[NTRACK_MAX];
     Float_t cluster_pt[NTRACK_MAX];
     Float_t cluster_eta[NTRACK_MAX];
     Float_t cluster_phi[NTRACK_MAX];
+    Float_t cluster_tof[NTRACK_MAX];
     //Float_t cluster_iso_tpc_04[NTRACK_MAX];
     Float_t cluster_iso_its_04[NTRACK_MAX];
     Float_t cluster_iso_its_04_ue[NTRACK_MAX];
@@ -601,6 +605,7 @@ int main(int argc, char *argv[])
     _tree_event->SetBranchAddress("cluster_pt", cluster_pt); // here
     _tree_event->SetBranchAddress("cluster_eta", cluster_eta);
     _tree_event->SetBranchAddress("cluster_phi", cluster_phi);
+    _tree_event->SetBranchAddress("cluster_tof", cluster_tof);
     _tree_event->SetBranchAddress("cluster_s_nphoton", cluster_s_nphoton); // here
     _tree_event->SetBranchAddress("cluster_mc_truth_index", cluster_mc_truth_index);
     _tree_event->SetBranchAddress("cluster_lambda_square", cluster_lambda_square);
@@ -665,7 +670,7 @@ int main(int argc, char *argv[])
 
     const double maxEta = 0.8;
     Long64_t totEvents = _tree_event->GetEntries();
-    Long64_t restrictEvents = 10000;
+    Long64_t restrictEvents = 100000;
     Long64_t numEntries = TMath::Min(totEvents,restrictEvents);
     cout << numEntries << endl;
     double aveXsection = 0.0;
@@ -809,19 +814,26 @@ int main(int argc, char *argv[])
 	    hClusterCut.Fill(0);
 	    h_Num2D_b.Fill(cluster_phi[n], cluster_eta[n]);
 	    //if( not(cluster_pt[n]>12)) continue; hClusterCut.Fill(1);                        //select pt of photons
-	    if( not(cluster_ncell[n]>2)) continue; hClusterCut.Fill(2);                      //removes clusters with 1 or 2 cells
+	    if( not(cluster_ncell[n]>=2)) continue; hClusterCut.Fill(2);                      //removes clusters with 1 or 2 cells
 	    if( not(cluster_e_cross[n]/cluster_e[n]>0.05)) continue; hClusterCut.Fill(3);    //removes "spiky" clusters
-	    if( not(cluster_nlocal_maxima[n]< 3)) continue; hClusterCut.Fill(4);             //require to have at most 2 local maxima.
-	    if( not(cluster_distance_to_bad_channel[n]>=2.0)) continue; hClusterCut.Fill(5); //require cluster to be away from a bad channel by 2 cells
-	    if(TMath::Abs(cluster_eta[n]) > 0.67) continue; hClusterCut.Fill(8);              //Avoiding cells on the edge    
+	    //if( not(cluster_nlocal_maxima[n]< 3)) continue; hClusterCut.Fill(4);             //require to have at most 2 local maxima.
+	    if( not(cluster_distance_to_bad_channel[n]>=1.0)) continue; hClusterCut.Fill(5); //require cluster to be away from a bad channel by 2 cells
+	    if (not(abs(cluster_tof[n]) < 20)) continue; hClusterCut.Fill(6);               //require cluster time of flight between +/- 20 ns.
+	    
+	    //acceptance cuts
+	    if( not (TMath::Abs(cluster_eta[n]) < 0.67)) continue; hClusterCut.Fill(7);              //Avoiding cells on the edge    
+
 	    //Isolation and shower shape selection:                                           
+	    //if(not (isolation < 1.5)) continue; hClusterCut.Fill(8);                         //isolation cut r= 0.4 and pt > 1.5
+	    if( not(cluster_lambda_square[n][0]<0.3) && not(cluster_lambda_square[n][0]>0.1) ) continue; hClusterCut.Fill(9);        //single-photon selection (as opposed to merged photon).
+	    
+
 	    double isolation = cluster_iso_its_04[n] + cluster_iso_its_04_ue[n];             //remove UE subtraction
 	    isolation = isolation - ue_estimate_its_const*0.4*0.4*TMath::Pi();               //Use rhoxA subtraction
-	    if(not (isolation < 1.5)) continue; hClusterCut.Fill(6);                         //isolation cut r= 0.4 and pt > 1.5
-	    //h_NoISO.Fill(cluster_pt[n],weight);
-	    //if(isolation < 1.0)
-	    //  h_YesISO.Fill(cluster_pt[n],weight); 
-	    if( not(cluster_lambda_square[n][0]<0.27)) continue; hClusterCut.Fill(7);        //single-photon selection (as opposed to merged photon).
+	    h_NoISO.Fill(cluster_pt[n],weight);
+	    if((isolation < 1.5))
+	      h_YesISO.Fill(cluster_pt[n],weight); 
+
 	    
 	    
 	    // Access the corresonding mc_truth particle; skip if index is 65535, which is invalid, or the truth particle pT is less than 10, or the mc_truth_pdg_code is not 22 (it's not a photon)
@@ -1282,7 +1294,7 @@ int main(int argc, char *argv[])
 
   if(doJets)
     {
-      TFile* fout_jet = new TFile(Form("JetOutput/MC/%s_Jets_0GeV30GeV_10K_8GeVcut_jetFinding_junk.root", MCname.Data()),"RECREATE");
+      TFile* fout_jet = new TFile(Form("JetOutput/MC/%s_Jets_0GeV30GeV_100Kevents_8GeVcut_jetFinding_new.root", MCname.Data()),"RECREATE");
       
       h_jetpt_truth.Write("hTruth");
       h_jetpt_truthreco_its.Write("hRecoTruth_its");
@@ -1326,7 +1338,7 @@ int main(int argc, char *argv[])
   
   if(doClusters)
     {
-      TFile* fout_cluster = new TFile(Form("PhotonOutput/MC/%s_5GeV60GeV_100Kevents_phosDCAlgap_erwanbinning.root", MCname.Data()),"RECREATE");
+      TFile* fout_cluster = new TFile(Form("PhotonOutput/MC/%s_5GeV60GeV_100Kevents_noNLMCut_phosDCAlgap_1GeVbinning_new.root", MCname.Data()),"RECREATE");
       
       /*TGraphAsymmErrors* eff_cluster = new TGraphAsymmErrors(&h_Num, &h_Den);
       TGraphAsymmErrors* eff_cluster_emcal = new TGraphAsymmErrors(&h_Num_emcal, &h_Den_emcal);
@@ -1343,14 +1355,15 @@ int main(int argc, char *argv[])
       h_Den_dcal.Write("hTruth_dcal");
       h_Num_dcal.Write("hRecoTruth_dcal");
       h_Reco_dcal.Write("hReco_dcal");
-      //h_YesISO.Write("h_YesISO");
-      //h_NoISO.Write("h_NoISO");
+      h_YesISO.Write("h_YesISO");
+      h_NoISO.Write("h_NoISO");
       hCluster_iso_04_truth.Write("hCluster_iso_04_truth");
       h_Correlation.Write();
       h_Num2D_b.Write("hEtaPhi_RecoTruth_b");
       h_Den2D_b.Write("hEtaPhi_Truth_b");
       h_Num2D.Write("hEtaPhi_RecoTruth");
       h_Den2D.Write("hEtaPhi_Truth");
+      hClusterCut.Write("hClusterCut");
       fout_cluster->Close();
     }//end doClusters
 

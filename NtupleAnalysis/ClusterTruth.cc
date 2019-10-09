@@ -444,7 +444,7 @@ int main(int argc, char *argv[])
     const double maxEta = 0.52;
     Long64_t totEvents = _tree_event->GetEntries();
     cout << totEvents << endl;
-    Long64_t restrictEvents = 100000;
+    Long64_t restrictEvents = 50000;
     Long64_t numEntries = TMath::Min(totEvents,restrictEvents);
     cout << numEntries << endl;
     double aveXsection = 0.0;
@@ -460,8 +460,8 @@ int main(int argc, char *argv[])
 
       //Event Selection
       if(not(TMath::Abs(primary_vertex[2])<10.0)) continue; //vertex z position
-      //if(primary_vertex[2] == 0.000000) continue;
-      if(ntrack < 0) continue;
+      if(primary_vertex[2] == 0.000000) continue;
+      //if(ntrack < 0) continue;
       hZvertex.Fill(primary_vertex[2]);
       numEvents++;
 
@@ -496,13 +496,13 @@ int main(int argc, char *argv[])
 	    if( (cluster_ncell[n]>=2))
 	      clusterCutBits |= (1 << 0); 
 	    clusterCutPassed |= (1 << 0); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(1);//removes clusters with 1 or 2 cells
-	    if( (cluster_e_cross[n]/cluster_e[n]>0.03))                          
+	    if( (cluster_e_cross[n]/cluster_e[n]>0.05))                          
 	      clusterCutBits |= (1 << 1); 
 	    clusterCutPassed |= (1 << 1); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(2);//removes "spiky" clusters
 	    if( (cluster_nlocal_maxima[n]<= 2))                                  
 	      clusterCutBits |= (1 << 2); 
 	    clusterCutPassed |= (1 << 2); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(3);//require to have at most 2 local maxima.
-	    if( (cluster_distance_to_bad_channel[n]>=2.0)) 
+	    if( (cluster_distance_to_bad_channel[n]>=1.0)) 
 	      clusterCutBits |= (1 << 3); 
 	    clusterCutPassed |= (1 << 3); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(4);//distnace to bad channels
 	    
@@ -512,14 +512,15 @@ int main(int argc, char *argv[])
 	    clusterCutPassed |= (1 << 6); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(7);//eta cut
 	    if(1.396 < cluster_phi[n] && cluster_phi[n] < 3.28) 
 	      clusterCutBits |= (1 << 7); 
-	    clusterCutPassed |= (1 << 7); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(8);//phi cut
+	    clusterCutPassed |= (1 << 7); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(8);//phi cut*/
 	    
 	    //Isolation and shower shape selection:
-	    if( (ptDepShowerShapeCut(cluster_pt[n], cluster_lambda_square[n][0])))
+	    //if( (ptDepShowerShapeCut(cluster_pt[n], cluster_lambda_square[n][0])))
+	    if(( 0.1 < cluster_lambda_square[n][0]) &&  ( 0.3 > cluster_lambda_square[n][0]))
 	      h_YesSSC.Fill(cluster_pt[n],weight);//clusterCutBits |= (1 << 5); 
 	    //clusterCutPassed |= (1 << 5); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(6); //single-photon selection, not merged
 	    h_NoSSC.Fill(cluster_pt[n],weight);
-	    if( (isolation < 2))
+	    if( (isolation < 1.5))
 	      h_YesISO.Fill(cluster_pt[n],weight);//clusterCutBits |= (1 << 4); 
 	    //clusterCutPassed |= (1 << 4); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(5);//isolation r = 0.4 and energy < 2
 	    h_NoISO.Fill(cluster_pt[n],weight);
@@ -717,7 +718,7 @@ int main(int argc, char *argv[])
 
   
   
-  TFile* fout_cluster = new TFile(Form("PhotonOutput/MC/%s_100Kevents_erwanbinning_noNorm_newIsoDef_fullEMCalAcceptance_isoEffsscEffRecoEffSeperate_cutFlow_binMigration_hCorr_corr.root", MCname.Data()),"RECREATE");
+  TFile* fout_cluster = new TFile(Form("PhotonOutput/MC/%s_50Kevents_erwanbinning_noNorm_newIsoDef_fullEMCalAcceptance_isoEffsscEffRecoEffSeperate_cutFlow_binMigration_hCorr_corr_stdCuts.root", MCname.Data()),"RECREATE");
   
   h_Den.Write("hTruth");
   h_Num.Write("hRecoTruth");

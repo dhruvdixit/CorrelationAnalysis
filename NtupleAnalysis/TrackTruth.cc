@@ -32,8 +32,8 @@ using namespace std;
 double SetPthatWeights(TString MCname, double Xsection, double ntrial)
 {
 
-  //13b2 and 17l4_cent weights
-  if(MCname(0,4) == "13b2" || MCname(0,4) == "17l4")
+  //13b2 and 17l3_cent weights
+  if(MCname(0,4) == "13b2" || MCname(0,4) == "17l3")
     return 1.0;
    
   //17g6a3 weights
@@ -104,10 +104,10 @@ int main(int argc, char *argv[])
   if (argc < 2) {
     exit(EXIT_FAILURE);
   }
-  int dummyc = 1;
-  char **dummyv = new char *[1];
+  //int dummyc = 1;
+  //char **dummyv = new char *[1];
     
-  dummyv[0] = strdup("main");
+  //dummyv[0] = strdup("main");
 
   gStyle->SetOptStat("");
   
@@ -130,8 +130,15 @@ int main(int argc, char *argv[])
     phibins[i] = phimin + i*phistep;
   }
   
-  const int nbinstrack = 31;
-  Double_t trackbins[nbinstrack+1] = {};
+  const int nbinstrack = 51;
+  //Double_t trackbins[nbinstrack+1] = {};
+  Double_t trackbins[nbinstrack+1] = {
+    0.15,  0.20,  0.25,  0.30,  0.35,  0.40,  0.45,  0.50,  0.55,  0.60, 
+    0.65,  0.70,  0.75,  0.80,  0.85,  0.90,  0.95,  1.00,  1.10,  1.20,
+    1.30,  1.40,  1.50,  1.60,  1.70,  1.80,  1.90,  2.00,  2.20,  2.40,
+    2.60,  2.80,  3.00,  3.20,  3.40,  3.60,  3.80,  4.00,  4.50,  5.00,
+    5.50,  6.00,  6.50,  7.00,  8.00,  9.00,  10.00, 11.00, 12.00, 13.00,
+    14.00, 15.00};//nbinsbstrack = 51*/
   //Double_t trackbins[nbinstrack+1] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 18.0, 20.0, 22.00, 24.00, 26.00, 30.00};//pPB nbinstrack = 21
   /*Double_t trackbins[nbinstrack+1] = {
     0.15,  0.20,  0.25,  0.30,  0.35,  0.40,  0.45,  0.50,  0.55,  0.60, 
@@ -144,72 +151,20 @@ int main(int argc, char *argv[])
     0.15,  0.25,  0.50,  0.75,  1.00,  2.00,  3.00,  4.00,  5.00,  6.00,  
     7.00,  8.00,  9.00,  10.00, 11.00, 12.00, 13.00, 14.00, 15.00, 16.00,
     18.00, 20.00, 22.00, 24.00, 26.00, 30.00};//nbinsbstrack = 25*/
-  //Double_t trackbins[nbinstrack+1] = {1.0,2.0,3.0,4.0,5.0,6.0, 8.0, 10.0, 13.0, 20.0};//pp bining
+  //Double_t trackbins[nbinstrack+1] = {1.0,2.0,3.0,4.0,5.0,6.0, 8.0, 10.0, 13.0, 20.0};//pp bin
+  /*Double_t trackbins[nbinstrack+1] = {
+    0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 
+    0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.10, 1.20, 
+    1.40, 1.60, 1.80, 2.00, 2.20, 2.40, 2.60, 2.80, 3.00, 3.20,
+    3.60, 4.00, 5.00, 6.00, 8.00, 10.0, 13.0, 20.0};//pp nbinstrack = 37*/
+  
   double ptmin = 0.5;
   double ptmax = 16;
-  double ptstep = (ptmax-ptmin)/nbinstrack;
-  for(int i = 0; i < nbinstrack+1; i++){
-    trackbins[i] = ptmin + i*ptstep;
-  }
-  
-  // const int nbinscluster = 55;
-  // Double_t clusterbins[nbinscluster+1] = {};
-  // //Double_t clusterbins[nbinscluster+1] = {12.0 , 14.06198608, 16.47828771, 19.30978769, 22.62783047, 26.51601976, 31.07232506, 36.4115502 , 42.668226  , 50.0};//geom binning
-  // //Double_t clusterbins[nbinscluster+1]{12.0, 15.96389997, 21.23717518, 28.252345, 37.58480079, 50.0};
-  // double Emin = 5;
-  // double Emax = 60;
-  // double Estep = (Emax-Emin)/nbinscluster;
-  // for(int i = 0; i < nbinscluster+1; i++)
-  //   {
-  //     clusterbins[i] = Emin + i*Estep;
-  //   }
-
-  // TH1D h_Den("h_Den", "", nbinscluster, clusterbins);
-  // TH1D h_Den_emcal("h_Den_emcal", "", nbinscluster, clusterbins);
-  // TH1D h_Den_dcal("h_Den_dcal", "", nbinscluster, clusterbins);
-  // TH1D h_Num("h_Num", "", nbinscluster, clusterbins);
-  // TH1D h_Num_emcal("h_Num_emcal", "", nbinscluster, clusterbins);
-  // TH1D h_Num_dcal("h_Num_dcal", "", nbinscluster, clusterbins);
-  // TH1D h_Reco("h_Reco", "", nbinscluster, clusterbins);
-  // TH1D h_Reco_emcal("h_Reco_emcal", "", nbinscluster, clusterbins);
-  // TH1D h_Reco_dcal("h_Reco_dcal", "", nbinscluster, clusterbins);
-  // TH1D hClusterCut("hClusterCut", "", 20, -0.5, 19.5);
-  // TH1D hCluster_iso_04_truth("hCluster_iso_04_truth", "", 20 , 0, 18);
-  // TH2D h_Correlation("h_Correlation", "", nbinscluster, clusterbins, nbinscluster, clusterbins);
-  // //TH2D h_Num2D("h_Num2D","", nbinsphi, phibins, nbinseta, etabins);
-  // //TH2D h_Den2D("h_Den2D","", nbinsphi, phibins, nbinseta, etabins);
+  //double ptstep = (ptmax-ptmin)/nbinstrack;
+  //for(int i = 0; i < nbinstrack+1; i++){
+  //  trackbins[i] = ptmin + i*ptstep;
+  //}
  
-  // TH2D h_Num2D("h_Num2D","", 416, -1.9, 3.3, 96, -0.8, 0.8);
-  // TH2D h_Den2D("h_Den2D","", 416, -1.9, 3.3, 96, -0.8, 0.8);
-  // TH2D h_Num2D_b("h_Num2D_b","", 416, -1.9, 3.3, 96, -0.8, 0.8);
-  // TH2D h_Den2D_b("h_Den2D_b","", 416, -1.9, 3.3, 96, -0.8, 0.8);
-  
-  // h_Den.Sumw2();
-  // h_Num.Sumw2();
-  // h_Den_emcal.Sumw2();
-  // h_Num_emcal.Sumw2();
-  // h_Den_dcal.Sumw2();
-  // h_Num_dcal.Sumw2();
-  // h_Reco.Sumw2();
-  // h_Reco_emcal.Sumw2();
-  // h_Reco_dcal.Sumw2();
-  // h_Correlation.Sumw2();
-  
-  // h_Den.SetTitle("truth photons; p_{T}^{truth} [GeV]; entries");
-  // h_Num.SetTitle("reco photons filled with truthpt reco; p_{T}^{Reco,truthpt} [GeV]; entries");
-  // h_Den_emcal.SetTitle("truth photons; p_{T}^{truth} [GeV]; entries");
-  // h_Num_emcal.SetTitle("reco photons filled with truthpt reco; p_{T}^{Reco,truthpt} [GeV]; entries");
-  // h_Den_dcal.SetTitle("truth photons; p_{T}^{truth} [GeV]; entries");
-  // h_Num_dcal.SetTitle("reco photons filled with truthpt reco; p_{T}^{Reco,truthpt} [GeV]; entries");
-  // h_Reco.SetTitle("reco photons filled with pt reco; p_{T}^{Reco,pt} [GeV]; 1/N_{event} dN/dp_{T}");
-  // h_Reco_emcal.SetTitle("reco clustes filled with pt reco; p_{T}^{Reco,pt} [GeV];1/N_{event} dN/dp_{T}");
-  // h_Reco_dcal.SetTitle("reco clustes filled with pt reco; p_{T}^{Reco,pt} [GeV];1/N_{event} dN/dp_{T}");
-  // h_Correlation.SetTitle("; True p_{T} [GeV]; Reconstructed p_{T} [GeV]");
-  // h_Num2D.SetTitle(";#phi_{true}; #eta_{true}");
-  // h_Den2D.SetTitle(";#phi_{true}; #eta_{true}");
-  // h_Num2D_b.SetTitle(";#phi_{true}; #eta_{true}");
-  // h_Den2D_b.SetTitle(";#phi_{true}; #eta_{true}");
-
 
   TH1F hTruth("hTruth", "", nbinstrack, trackbins);
   TH1F hRecoTruth("hRecoTruth","", nbinstrack, trackbins);
@@ -262,39 +217,15 @@ int main(int argc, char *argv[])
   hReco2D.SetTitle(";#phi;#eta");
   hTruth2D.SetTitle(";#phi;#eta");
   hZvertex.SetTitle(";Z_{v} [cm]; counts");
-  
-  // //jets
-  // TH1D hBR_jetpt("hBR_jetpt",   "Associated jet pt spectrum (reco), bkg region", 30, 0, 30);
-  // TH1D hSR_jetpt("hSR_jetpt", "Associated jet pt spectrum (reco), signal region", 30, 0, 30);
-  // TH1D hBR_jetpt_truth("hBR_jetpt_truth",   "Associated jet pt spectrum (truth), bkg region", 30, 0, 30);
-  // TH1D hSR_jetpt_truth("hSR_jetpt_truth", "Associated jet pt spectrum (truth), signal region", 30, 0, 30);
-  // TH1D h_jetpt_truth("h_jetpt_truth", "truth jet pt", 30, 0, 30);
-  // TH1D h_jetpt_truthreco("h_jetpt_truthreco", "reco jet truth pt (numerator of efficiency)", 30, 0, 30);
-  // TH1D h_jetpt_reco("h_jetpt_reco", "reco jet reco pt", 30, 0, 30);
-  // TH2D h_jetpt_correlation("h_jetpt_correlation", "jet response matrix", 30, 0, 30, 30, 0, 30);
-  // TH2F h_jetRes_Pt("h_jetRes_Pt", "", 30, 0, 30, 320, -250, 150);
-
-  // h_jetpt_truth.Sumw2();
-  // h_jetpt_truthreco.Sumw2();
-  // h_jetpt_reco.Sumw2();
-  // hBR_jetpt.Sumw2();
-  // hSR_jetpt.Sumw2();
-  // hBR_jetpt_truth.Sumw2();
-  // hSR_jetpt_truth.Sumw2();
-
-  // h_jetRes_Pt.SetTitle("Jet Resolution Response;p_{T}^{true} [GeV/c];(p_{T}^{reco}-p_{T}^{true})/p_{T}^{true} [%]");
-
-  const int TrackBit = 3;//3 for TPC+ITS, 16 for ITS only
+ 
+  const int TrackBit = 16;//3 for TPC+ITS, 16 for ITS only
   TString ntupleName = "junk";
   TString MCname = "junk";
   int numEvents, numEvents_tracks, numEvents_clusters;
   numEvents = numEvents_tracks = numEvents_clusters = 0;
   double sumWeight = 0.0;
-
-  //const int numMC = argc;
-  //double aveXsectionArray[] = {0.0};
   
-  TApplication application("", &dummyc, dummyv);
+  //TApplication application("", &dummyc, dummyv);
   TCanvas* canvas = new TCanvas();
   
   //Looping over ntuples
@@ -347,29 +278,7 @@ int main(int argc, char *argv[])
     Float_t track_its_chi_square[NTRACK_MAX];
     UChar_t track_its_ncluster[NTRACK_MAX];
     unsigned short track_mc_truth_index[NTRACK_MAX];
-        
-    // UInt_t ncluster;
-    // Float_t cluster_e[NTRACK_MAX];
-    // Float_t cluster_e_cross[NTRACK_MAX];
-    // Float_t cluster_pt[NTRACK_MAX];
-    // Float_t cluster_eta[NTRACK_MAX];
-    // Float_t cluster_phi[NTRACK_MAX];
-    // //Float_t cluster_iso_tpc_04[NTRACK_MAX];
-    // Float_t cluster_iso_its_04[NTRACK_MAX];
-    // Float_t cluster_iso_its_04_ue[NTRACK_MAX];
-    // Float_t cluster_iso_04_truth[NTRACK_MAX];
-    // //Float_t cluster_frixione_tpc_04_02[NTRACK_MAX];
-    // Float_t cluster_frixione_its_04_02[NTRACK_MAX];
-    // Float_t cluster_s_nphoton[NTRACK_MAX][4];
-    // UChar_t cluster_nlocal_maxima[NTRACK_MAX];
-    // Float_t cluster_distance_to_bad_channel[NTRACK_MAX];   
- 
-    // unsigned short cluster_mc_truth_index[NTRACK_MAX][32];
-    // Int_t cluster_ncell[NTRACK_MAX];
-    // UShort_t  cluster_cell_id_max[NTRACK_MAX];
-    // Float_t cluster_lambda_square[NTRACK_MAX][2];
-    // Float_t cell_e[17664];
-        
+            
     //MC
     unsigned int nmc_truth;
     Float_t mc_truth_pt[NTRACK_MAX];
@@ -385,32 +294,7 @@ int main(int argc, char *argv[])
     Float_t mc_truth_first_parent_eta[NTRACK_MAX];
     Float_t mc_truth_first_parent_phi[NTRACK_MAX];
     Float_t eg_cross_section;
-    Int_t   eg_ntrial;
-
-    // //Jets reco 
-    // UInt_t njet_ak04its;
-    // Float_t jet_ak04its_pt_raw[NTRACK_MAX];
-    // Float_t jet_ak04its_eta_raw[NTRACK_MAX];
-    // Float_t jet_ak04its_phi[NTRACK_MAX];
-    
-    // Float_t jet_ak04its_pt_truth[NTRACK_MAX];
-    // Float_t jet_ak04its_eta_truth[NTRACK_MAX];
-    // Float_t jet_ak04its_phi_truth[NTRACK_MAX];
-  
-    // //The z_reco is defined as the fraction of the true jet that ended up in this reco jet 
-    // //There are two entries and indices, the first is the best. 
-    // Int_t   jet_ak04its_truth_index_z_reco[NTRACK_MAX][2];
-    // Float_t jet_ak04its_truth_z_reco[NTRACK_MAX][2];
-    // Float_t jet_ak04its_ptd_raw[NTRACK_MAX];
-    // Float_t jet_ak04its_width_sigma[NTRACK_MAX][2];
-    // UShort_t jet_ak04its_multiplicity[NTRACK_MAX];
-
-    // //Truth Jets
-    // UInt_t njet_truth_ak04;
-    // Float_t jet_truth_ak04_pt[NTRACK_MAX];
-    // Float_t jet_truth_ak04_eta[NTRACK_MAX];
-    // Float_t jet_truth_ak04_phi[NTRACK_MAX];    
-    
+    Int_t   eg_ntrial;    
         
     // Set the branch addresses of the branches in the TTrees
     _tree_event->SetBranchAddress("primary_vertex", primary_vertex);
@@ -428,29 +312,8 @@ int main(int argc, char *argv[])
     _tree_event->SetBranchAddress("track_dca_z", track_dca_z);
     _tree_event->SetBranchAddress("track_its_chi_square", track_its_chi_square);
     _tree_event->SetBranchAddress("track_mc_truth_index", track_mc_truth_index);
-        
-    //clusters
-    // _tree_event->SetBranchAddress("ncluster", &ncluster);
-    // _tree_event->SetBranchAddress("cluster_e", cluster_e);
-    // _tree_event->SetBranchAddress("cluster_e_cross", cluster_e_cross);
-    // _tree_event->SetBranchAddress("cluster_pt", cluster_pt); // here
-    // _tree_event->SetBranchAddress("cluster_eta", cluster_eta);
-    // _tree_event->SetBranchAddress("cluster_phi", cluster_phi);
-    // _tree_event->SetBranchAddress("cluster_s_nphoton", cluster_s_nphoton); // here
-    // _tree_event->SetBranchAddress("cluster_mc_truth_index", cluster_mc_truth_index);
-    // _tree_event->SetBranchAddress("cluster_lambda_square", cluster_lambda_square);
-    // _tree_event->SetBranchAddress("cluster_iso_its_04",cluster_iso_its_04);
-    // _tree_event->SetBranchAddress("cluster_iso_its_04_ue",cluster_iso_its_04_ue);
-    // _tree_event->SetBranchAddress("cluster_iso_04_truth",cluster_iso_04_truth);
-    // _tree_event->SetBranchAddress("cluster_frixione_its_04_02",cluster_frixione_its_04_02);
-    // _tree_event->SetBranchAddress("cluster_nlocal_maxima", cluster_nlocal_maxima);        
-    // _tree_event->SetBranchAddress("cluster_distance_to_bad_channel", cluster_distance_to_bad_channel);
-
-    // _tree_event->SetBranchAddress("cluster_ncell", cluster_ncell);
-    // _tree_event->SetBranchAddress("cluster_cell_id_max", cluster_cell_id_max);
-    // _tree_event->SetBranchAddress("cell_e", cell_e);
-        
-    // //MC
+                
+    //MC
     _tree_event->SetBranchAddress("nmc_truth", &nmc_truth);
     _tree_event->SetBranchAddress("mc_truth_pdg_code", mc_truth_pdg_code);
     _tree_event->SetBranchAddress("mc_truth_pt", mc_truth_pt);
@@ -460,35 +323,11 @@ int main(int argc, char *argv[])
     _tree_event->SetBranchAddress("mc_truth_first_parent_pdg_code",mc_truth_first_parent_pdg_code);
     _tree_event->SetBranchAddress("eg_cross_section",&eg_cross_section);
     _tree_event->SetBranchAddress("eg_ntrial",&eg_ntrial);
-   
-    // //jets
-    // _tree_event->SetBranchAddress("njet_ak04its", &njet_ak04its);
-    // _tree_event->SetBranchAddress("jet_ak04its_pt_raw", jet_ak04its_pt_raw);
-    // _tree_event->SetBranchAddress("jet_ak04its_eta_raw", jet_ak04its_eta_raw);
-    // _tree_event->SetBranchAddress("jet_ak04its_phi", jet_ak04its_phi);
-    // _tree_event->SetBranchAddress("jet_ak04its_pt_truth", jet_ak04its_pt_truth);
-    // _tree_event->SetBranchAddress("jet_ak04its_eta_truth", jet_ak04its_eta_truth);
-    // _tree_event->SetBranchAddress("jet_ak04its_phi_truth", jet_ak04its_phi_truth);
-
-    // //quark-gluon discriminator variables
-    // _tree_event->SetBranchAddress("jet_ak04its_ptd_raw", jet_ak04its_ptd_raw);
-    // _tree_event->SetBranchAddress("jet_ak04its_width_sigma", jet_ak04its_width_sigma);
-    // _tree_event->SetBranchAddress("jet_ak04its_multiplicity_raw", jet_ak04its_multiplicity);
-
-
-
-    // _tree_event->SetBranchAddress("jet_ak04its_truth_index_z_reco",     jet_ak04its_truth_index_z_reco);
-    // _tree_event->SetBranchAddress("jet_ak04its_truth_z_reco", jet_ak04its_truth_z_reco);    
-
-    // //truth jets
-    // _tree_event->SetBranchAddress("njet_truth_ak04", &njet_truth_ak04);
-    // _tree_event->SetBranchAddress("jet_truth_ak04_pt", jet_truth_ak04_pt);
-    // _tree_event->SetBranchAddress("jet_truth_ak04_phi", jet_truth_ak04_phi);
-    // _tree_event->SetBranchAddress("jet_truth_ak04_eta", jet_truth_ak04_eta); 
+  
 
     const double maxEta = 0.8;
     Long64_t totEvents = _tree_event->GetEntries();
-    Long64_t restrictEvents = 2000000;
+    Long64_t restrictEvents = 1000000;
     Long64_t numEntries = TMath::Min(totEvents,restrictEvents);
     cout << numEntries << endl;
     double aveXsection = 0.0;
@@ -510,7 +349,7 @@ int main(int argc, char *argv[])
 
       //event selection
       if(not(TMath::Abs(primary_vertex[2])<10.0)) continue; //vertex z position
-      //if(primary_vertex[2] == 0.000000000) continue;
+      if(primary_vertex[2] == 0.0000) continue;
       hZvertex.Fill(primary_vertex[2]);
       numEvents++;
 
@@ -522,9 +361,11 @@ int main(int argc, char *argv[])
 	//cout << (int)track_quality[n] << endl;
 	hTrackQuality.Fill((int)track_quality[n]);
 	if((track_quality[n]&TrackBit)==0) continue; hTrackCut.Fill(1);//track quality cut
-	if(TMath::Abs(track_eta[n])> maxEta) continue; hTrackCut.Fill(2);//eta cut
+	if(TMath::Abs(track_eta[n]) > maxEta) continue; hTrackCut.Fill(2);//eta cut
+	//if((1.4 < track_phi[n]) && (track_phi[n] < 3.1)) {continue;}//phi cut
 	if(track_pt[n] < 0.15) continue; hTrackCut.Fill(3);//pt cut
-	if(track_its_chi_square[n]>36.0) continue; hTrackCut.Fill(4);//its cluster chi^2 cut
+	if((track_its_chi_square[n]/track_its_ncluster[n])>36.0) continue; hTrackCut.Fill(4);//its cluster chi^2 cut
+	//if((track_its_chi_square[n])>36.0) continue; hTrackCut.Fill(4);//its cluster chi^2 cut
 	if(TrackBit == 16)
 	  {
 	    
@@ -580,7 +421,8 @@ int main(int argc, char *argv[])
 	//if(int(mc_truth_charge[n])==0) continue;
 	//if(TMath::Abs(mc_truth_pdg_code[index])!= 211)  continue;
         if(TMath::Abs(mc_truth_eta[nTru])> maxEta) continue; //skip particles with |eta|>0.8
-        
+	//if((1.4 < mc_truth_phi[nTru]) && (mc_truth_phi[nTru] < 3.1)) {continue;}//phi cut
+        //if(track_pt[nTru] < 0.15) {hTrackCut.Fill(3); continue;}//pt cut
 	
 	hTruth.Fill(mc_truth_pt[nTru],weight);
 	if(mc_truth_pt[nTru] > 1)
@@ -599,10 +441,16 @@ int main(int argc, char *argv[])
   cout << numEvents_tracks << endl;
   cout << sumWeight << endl;
 
-  TH1D eventSelection("eventSelection","", 8, -0.5, 7.5);  
-
+  TH1D eventSelection("eventSelection","", 8, -0.5, 7.5);
   const double tot_eta = 1.6;  
-  for(int i = 1; i < hReco.GetNbinsX()+1; i++)
+  /*TH1D normalizer("normalizer", "normalizer", 10, -0.5, 9.5);
+  normalizer.GetXaxis()->SetBinLabel(1,"numEvents");
+  normalizer.GetXaxis()->SetBinLabel(2,"tot_eta");
+  normalizer.SetBinContent(1, numEvents);
+  normalizer.SetBinContent(2, tot_eta);*/
+
+  
+  /*for(int i = 1; i < hReco.GetNbinsX()+1; i++)
     {
       double dpt, content, temp, error, tempErr;
       dpt = content = temp = error = tempErr = 0.0;
@@ -631,7 +479,7 @@ int main(int argc, char *argv[])
       tempErr = error/dpt;
       hTruth.SetBinError(i, tempErr);
 
-    }
+      }//*/
 
   for(int x = 1; x < hCorrelation_cor.GetNbinsX()+1; x++)
     {
@@ -709,7 +557,7 @@ int main(int argc, char *argv[])
 
   bool makeXsectionFile = false;
 
-  TFile* fout_track = new TFile(Form("TrackOutput/%s_%i_31bins_halfGeV16GeV_4L.root", MCname.Data(), TrackBit),"RECREATE");
+  TFile* fout_track = new TFile(Form("TrackOutput/%s_%i_%ibins_publishedBinning15GeV_1Mevents_newChiCut_noNormalize_allReco_StandardAcceptance.root", MCname.Data(), TrackBit, nbinstrack),"RECREATE");
   
   TGraphAsymmErrors* eff = new TGraphAsymmErrors(&hRecoTruth, &hTruth);
   eff->SetTitle("; p_{T}^{true} ; #epsilon");
@@ -743,10 +591,6 @@ int main(int argc, char *argv[])
   fout_track->Close();
 
 
-  if(makeXsectionFile)
-    {
-      
-    }
   std::cout << " ending " << std::endl;
   return EXIT_SUCCESS;
 }//end main
