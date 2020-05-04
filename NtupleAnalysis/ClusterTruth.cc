@@ -30,64 +30,6 @@
 
 using namespace std;
 
-bool ptDepShowerShapeCut(Float_t clus_pt, Float_t lambda2)
-{
-  //bool passShowerShape = true;
-
-  if(lambda2 < 0.1)
-    return false;
-  
-  if((clus_pt > 10 && clus_pt < 12) && lambda2 > 0.40)
-    return false;
-
-  if((clus_pt > 12 && clus_pt < 14) && lambda2 > 0.35)
-    return false;
-
-  if((clus_pt > 14 && clus_pt < 16) && lambda2 > 0.32)
-    return false;
-
-  if((clus_pt > 16 && clus_pt < 60) && lambda2 > 0.30)
-    return false;
-
-
-  return true;
-}
-
-Float_t Get_Purity_ErrFunction(Float_t pT_GeV, std::string deviation = "") {
-
-  Float_t purity_val = 0;
-
-  //Non-platue assumption
-  // Float_t par[3] = {0.548247710,
-  //                   8.794543375,
-  //                   12.7423900};
-
-  //Old
-//   Float_t par[3] = {0.54225742923,
-//                     8.09242373515,
-//                     11.8085154181};
-
-  Float_t par[3] = {0.539253098581,
-		    8.84942587038,
-		    12.360736025};
-
-  if (strcmp(deviation.data(),"Plus")==0){
-    par[0] = 0.60750016509;
-    par[1] = 7.05184155403;
-    par[2] = 13.6116163603;
-  }
-
-  if (strcmp(deviation.data(),"Minus")==0){
-    par[0] = 0.479958593235;
-    par[1] = 9.05392932723;
-    par[2] = 10.2061359452;
-  }
-
-
-  purity_val = par[0]*TMath::Erf((pT_GeV-par[1])/par[2]);
-  return purity_val;
-}
-
 double SetPthatWeights(TString MCname, double Xsection, double ntrial)
 {
 
@@ -150,20 +92,10 @@ int main(int argc, char *argv[])
   if (argc < 2) {
     exit(EXIT_FAILURE);
   }
-  //int dummyc = 1;
-  //char **dummyv = new char *[1];
-    
-  //dummyv[0] = strdup("main");
 
   gStyle->SetOptStat("");
   
   TString topic = "none";
-  //topic = (TString)argv[1];
-  //cut << topic << endl;
-
-  bool doJets = topic.Contains("jet");
-  bool doClusters = true;//topic.Contains("cluster");
-  bool doTracks =  topic.Contains("track");
 
   TH1F hZvertex("hZvertex","",60, -30, 30);
   hZvertex.Sumw2();  
@@ -190,7 +122,6 @@ int main(int argc, char *argv[])
   }
     
   const int nbinscluster = 14;
-  //Double_t clusterbins[nbinscluster+1] = {12.0 , 14.06198608, 16.47828771, 19.30978769, 22.62783047, 26.51601976, 31.07232506, 36.4115502 , 42.668226  , 50.0};//geom binning
   Double_t clusterbins[nbinscluster+1] = {5.00, 6.00, 7.00, 8.00, 9.00, 10.00, 12.00, 14.00, 16.00, 18.00, 20.00, 25.00, 30.00, 40.00, 60.00};//nbinscluster = 14, Erwann binning
   //Double_t clusterbins[nbinscluster+1] = {};
   
@@ -209,7 +140,8 @@ int main(int argc, char *argv[])
   TH1D h_NoISO("h_NoISO", "", nbinscluster, clusterbins);
   TH1D h_YesSSC("h_YesSSC", "", nbinscluster, clusterbins);
   TH1D h_NoSSC("h_NoSSC", "", nbinscluster, clusterbins);
-  TH1D h_Efficiency("h_Efficiency", "", nbinscluster, clusterbins);
+  TH1D h_Efficiency("h_Efficiency", "", nbinscluster, clusterbins);//recotruth/truth
+  TH1D h_Efficiency2("h_Efficiency2", "", nbinscluster, clusterbins);//reco/truth
   TH1D h_migEfficiency("h_migEfficiency", "", nbinscluster, clusterbins);
   TH1D h_recoEfficiency("h_recoEfficiency", "", nbinscluster, clusterbins);
   TH1D h_ISOEfficiency("h_ISOEfficiency", "", nbinscluster, clusterbins);
@@ -221,13 +153,14 @@ int main(int argc, char *argv[])
   
   TH2D h_Correlation("h_Correlation", "", nbinscluster, clusterbins, nbinscluster, clusterbins);
   TH2D h_Correlation_corr("h_Correlation_corr", "", nbinscluster, clusterbins, nbinscluster, clusterbins);
-  //TH2D h_Num2D("h_Num2D","", nbinsphi, phibins, nbinseta, etabins);
-  //TH2D h_Den2D("h_Den2D","", nbinsphi, phibins, nbinseta, etabins);
   
   TH2D h_Num2D("h_Num2D","", 416, -1.9, 3.3, 96, -0.8, 0.8);
   TH2D h_Den2D("h_Den2D","", 416, -1.9, 3.3, 96, -0.8, 0.8);
   TH2D h_Num2D_b("h_Num2D_b","", 416, -1.9, 3.3, 96, -0.8, 0.8);
   TH2D h_Den2D_b("h_Den2D_b","", 416, -1.9, 3.3, 96, -0.8, 0.8);
+
+  TH1D hCluster_tofB("hCluster_tof", "", 200, -100, 100);
+  TH1D hCluster_tofA("hCluster_tof", "", 200, -100, 100);
   
   
   /*////////////////////////////////////
@@ -256,6 +189,7 @@ int main(int argc, char *argv[])
   h_NoSSC.Sumw2();
   h_Fake.Sumw2();
   h_Efficiency.Sumw2();
+  h_Efficiency2.Sumw2();
   h_migEfficiency.Sumw2();
   h_recoEfficiency.Sumw2();
   h_ISOEfficiency.Sumw2();
@@ -280,6 +214,7 @@ int main(int argc, char *argv[])
   h_YesSSC.SetTitle(";p_{T}^{Reco,pt} [GeV/c];  dN/dp_{T}");
   h_NoSSC.SetTitle(";p_{T}^{Reco,pt} [GeV/c];  dN/dp_{T}");
   h_Efficiency.SetTitle("Efficiency = #epsilon_{reco} x #epsilon_{iso} x #epsilon_{ssc}; E_{T} [GeV]; #epsilon");
+  h_Efficiency2.SetTitle("Efficiency = reco/truth; E_{T} [GeV]; #epsilon");
   h_recoEfficiency.SetTitle("Reconstruction Efficiency; E_{T} [GeV]; #epsilon_{reco}");
   h_migEfficiency.SetTitle("E_{T} Bin Migration Efficiency (recoE/trueE); E_{T} [GeV]; #epsilon_{mig}");
   h_ISOEfficiency.SetTitle("Isolation Efficiency; E_{T} [GeV]; #epsilon_{iso}");
@@ -295,28 +230,22 @@ int main(int argc, char *argv[])
   
   hClusterCut.GetXaxis()->SetBinLabel(1,"All Clusters");
   hClusterCut.GetXaxis()->SetBinLabel(2,"ncell>=2");
-  hClusterCut.GetXaxis()->SetBinLabel(3,"exoticity>0.03");
+  hClusterCut.GetXaxis()->SetBinLabel(3,"exoticity>0.05");
   hClusterCut.GetXaxis()->SetBinLabel(4,"num local maxima <=2");
-  hClusterCut.GetXaxis()->SetBinLabel(5,"distance to bad channel>2");
-  hClusterCut.GetXaxis()->SetBinLabel(6,"isolation");
-  hClusterCut.GetXaxis()->SetBinLabel(7,"shower shape");
-  hClusterCut.GetXaxis()->SetBinLabel(8,"#eta");
-  hClusterCut.GetXaxis()->SetBinLabel(9,"#phi");
-  hClusterCut.GetXaxis()->SetBinLabel(10,"accepted cluster");
+  hClusterCut.GetXaxis()->SetBinLabel(5,"distance to bad channel>1");
+  hClusterCut.GetXaxis()->SetBinLabel(6,"cluser tof");
+  hClusterCut.GetXaxis()->SetBinLabel(7,"#eta");
+  hClusterCut.GetXaxis()->SetBinLabel(8,"#phi");
+  hClusterCut.GetXaxis()->SetBinLabel(9,"shower shape");
+  hClusterCut.GetXaxis()->SetBinLabel(10,"isolation");
+  hClusterCut.GetXaxis()->SetBinLabel(11,"accepted cluster");
   
   TString ntupleName = "junk";
   TString MCname = "junk";
   int numEvents, numEvents_tracks, numEvents_clusters;
   numEvents = numEvents_tracks = numEvents_clusters = 0;
   double sumWeight = 0.0;
-  
-  Float_t jetptmin = 8.0;
-  //const int numMC = argc;
-  //double aveXsectionArray[] = {0.0};
-  
-  //TApplication application("", &dummyc, dummyv);
-  //TCanvas* canvas = new TCanvas();
-  
+    
   //Looping over ntuples
   for (int iarg = 1; iarg < argc; iarg++) {
     std::cout << "Opening: " << (TString)argv[iarg] << std::endl;
@@ -364,9 +293,11 @@ int main(int argc, char *argv[])
     UInt_t ncluster;
     Float_t cluster_e[NTRACK_MAX];
     Float_t cluster_e_cross[NTRACK_MAX];
+    Float_t cluster_e_max[NTRACK_MAX];
     Float_t cluster_pt[NTRACK_MAX];
     Float_t cluster_eta[NTRACK_MAX];
     Float_t cluster_phi[NTRACK_MAX];
+    Float_t cluster_tof[NTRACK_MAX];
     //Float_t cluster_iso_tpc_04[NTRACK_MAX];
     Float_t cluster_iso_its_04[NTRACK_MAX];
     Float_t cluster_iso_its_04_ue[NTRACK_MAX];
@@ -412,9 +343,11 @@ int main(int argc, char *argv[])
     _tree_event->SetBranchAddress("ncluster", &ncluster);
     _tree_event->SetBranchAddress("cluster_e", cluster_e);
     _tree_event->SetBranchAddress("cluster_e_cross", cluster_e_cross);
+    _tree_event->SetBranchAddress("cluster_e_max", cluster_e_max);
     _tree_event->SetBranchAddress("cluster_pt", cluster_pt); // here
     _tree_event->SetBranchAddress("cluster_eta", cluster_eta);
     _tree_event->SetBranchAddress("cluster_phi", cluster_phi);
+    _tree_event->SetBranchAddress("cluster_tof", cluster_tof);
     _tree_event->SetBranchAddress("cluster_s_nphoton", cluster_s_nphoton); // here
     _tree_event->SetBranchAddress("cluster_mc_truth_index", cluster_mc_truth_index);
     _tree_event->SetBranchAddress("cluster_lambda_square", cluster_lambda_square);
@@ -441,13 +374,13 @@ int main(int argc, char *argv[])
     _tree_event->SetBranchAddress("mc_truth_first_parent_pdg_code",mc_truth_first_parent_pdg_code);
     
 
-    const double maxEta = 0.52;
     Long64_t totEvents = _tree_event->GetEntries();
     cout << totEvents << endl;
-    Long64_t restrictEvents = 50000;
+    Long64_t restrictEvents = 1000000;
     Long64_t numEntries = TMath::Min(totEvents,restrictEvents);
     cout << numEntries << endl;
     double aveXsection = 0.0;
+    int numEventsPerNtuple = 0;
     // Loop over events
     for(Long64_t ievent = 0; ievent < numEntries ; ievent++){
       _tree_event->GetEntry(ievent);
@@ -464,7 +397,8 @@ int main(int argc, char *argv[])
       //if(ntrack < 0) continue;
       hZvertex.Fill(primary_vertex[2]);
       numEvents++;
-
+      numEventsPerNtuple++;
+      
       //Selecting pthat weights
       double weight = SetPthatWeights(ntupleName, (double)eg_cross_section, (double)eg_ntrial);
       if(ievent%10000 == 0)
@@ -490,9 +424,8 @@ int main(int argc, char *argv[])
 	    bool isoPassed = false;
 	    
 	    //Photon Selection
-	    ULong64_t clusterCutBits = 0;
+	    /*ULong64_t clusterCutBits = 0;
 	    ULong64_t clusterCutPassed = 0;
-	    //if( not(cluster_pt[n]>8)) {continue;} //select pt of photons
 	    if( (cluster_ncell[n]>=2))
 	      clusterCutBits |= (1 << 0); 
 	    clusterCutPassed |= (1 << 0); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(1);//removes clusters with 1 or 2 cells
@@ -505,30 +438,43 @@ int main(int argc, char *argv[])
 	    if( (cluster_distance_to_bad_channel[n]>=1.0)) 
 	      clusterCutBits |= (1 << 3); 
 	    clusterCutPassed |= (1 << 3); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(4);//distnace to bad channels
-	    
+	    if( ((cluster_tof[n] > -20) && (cluster_tof[n]) < 20))
+	      clusterCutBits |= (1 << 4);
+	    clusterCutPassed |= (1 << 4); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(5);//cluster tof
+
 	    //Eta+Phi cuts
 	    if(TMath::Abs(cluster_eta[n] < 0.67)) 
-	      clusterCutBits |= (1 << 6); 
-	    clusterCutPassed |= (1 << 6); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(7);//eta cut
+	      clusterCutBits |= (1 << 5); 
+	    clusterCutPassed |= (1 << 5); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(6);//eta cut
 	    if(1.396 < cluster_phi[n] && cluster_phi[n] < 3.28) 
-	      clusterCutBits |= (1 << 7); 
-	    clusterCutPassed |= (1 << 7); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(8);//phi cut*/
+	      clusterCutBits |= (1 << 6); 
+	    clusterCutPassed |= (1 << 6); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(7);//phi cut
 	    
 	    //Isolation and shower shape selection:
-	    //if( (ptDepShowerShapeCut(cluster_pt[n], cluster_lambda_square[n][0])))
 	    if(( 0.1 < cluster_lambda_square[n][0]) &&  ( 0.3 > cluster_lambda_square[n][0]))
-	      h_YesSSC.Fill(cluster_pt[n],weight);//clusterCutBits |= (1 << 5); 
-	    //clusterCutPassed |= (1 << 5); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(6); //single-photon selection, not merged
-	    h_NoSSC.Fill(cluster_pt[n],weight);
+	      clusterCutBits |= (1 << 7);
+	    clusterCutPassed |= (1 << 7); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(8);//shower shape
 	    if( (isolation < 1.5))
-	      h_YesISO.Fill(cluster_pt[n],weight);//clusterCutBits |= (1 << 4); 
-	    //clusterCutPassed |= (1 << 4); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(5);//isolation r = 0.4 and energy < 2
-	    h_NoISO.Fill(cluster_pt[n],weight);
-
+	      clusterCutBits |= (1 << 8); 
+	    clusterCutPassed |= (1 << 8); if(clusterCutBits == clusterCutPassed) hClusterCut.Fill(9);//isolation
+	    
 	    if(clusterCutBits != clusterCutPassed) { continue;}
-	    //cout << "cluster rejected" << endl;
-	    
-	    
+	    //cout << "cluster rejected" << endl;//*/
+
+	    hCluster_tofB.Fill(cluster_tof[n]);
+
+	    if(not (cluster_ncell[n]>=2)) continue;
+	    if(not (cluster_e_cross[n]/cluster_e_max[n]>0.05)) continue;
+	    if(not (cluster_nlocal_maxima[n]<= 2)) continue;
+	    if(not (cluster_distance_to_bad_channel[n]>=1))continue;
+	    //if(not ((cluster_tof[n] > -20) && (cluster_tof[n] < 20))) continue;
+	    if(not (TMath::Abs(cluster_eta[n] < 0.67))) continue;
+	    if(not (1.396 < cluster_phi[n] && cluster_phi[n] < 3.28)) continue;
+	    if(not (( 0.1 < cluster_lambda_square[n][0]) &&  ( 0.3 > cluster_lambda_square[n][0]))) continue;
+	    if(not (isolation < 1.5)) continue;
+
+	    hCluster_tofA.Fill(cluster_tof[n]);
+	    hClusterCut.Fill(10);
 	    h_RecoAll.Fill(cluster_pt[n], weight);
 
 	    // Access the corresonding mc_truth particle; skip if index is 65535, which is invalid, or the truth particle pT is less than 10, or the mc_truth_pdg_code is not 22 (it's not a photon)
@@ -573,12 +519,14 @@ int main(int argc, char *argv[])
 	  //loop over truth particles for clusters
 	  for (ULong64_t nmc = 0; nmc < nmc_truth; nmc++) {
 
-	    if(not (TMath::Abs(mc_truth_eta[nmc] < 0.667))) continue;
+	    if(not (TMath::Abs(mc_truth_eta[nmc] < 0.67))) continue;
 	    if(not (1.396 < mc_truth_phi[nmc] && mc_truth_phi[nmc] < 3.28)) continue;
-	    if(mc_truth_pdg_code[nmc]==22 && int(mc_truth_status[nmc])>0 &&  mc_truth_first_parent_pdg_code[nmc]==22)
+	    if(mc_truth_pdg_code[nmc]!=22) continue;
+	    if(mc_truth_first_parent_pdg_code[nmc]!=22) continue;
+	    if(not (mc_truth_status[nmc] >0)) continue; 
 	      {
 		
-		hCluster_iso_04_truth.Fill(cluster_iso_04_truth[nmc]);
+		//hCluster_iso_04_truth.Fill(cluster_iso_04_truth[nmc]);
 		h_Den2D_b.Fill(mc_truth_phi[nmc],mc_truth_eta[nmc]);
 		h_Den.Fill(mc_truth_pt[nmc],weight);		
 		
@@ -587,7 +535,7 @@ int main(int argc, char *argv[])
 	}//end doCluster
     }//end over events
     
-    cout << (TString)argv[iarg] << "\t" << "average Xsection:\t" << aveXsection << "\tNumber of events:\t" << numEvents << "\tAveXsection:\t" << aveXsection/numEntries << endl;
+    cout << (TString)argv[iarg] << "\t" << "average Xsection:\t" << aveXsection << "\tNumber of events:\t" << numEvents << "\tNumber of events per ntuple:\t" << numEventsPerNtuple << "\tAveXsection:\t" << aveXsection/numEntries << endl;
     
   }//end loop over ntuples
   cout << numEvents_tracks << endl;
@@ -595,7 +543,7 @@ int main(int argc, char *argv[])
   cout << sumWeight << endl;
 
   
-  for(int i = 1; i < h_Den.GetNbinsX()+1; i++)
+  /*for(int i = 1; i < h_Den.GetNbinsX()+1; i++)
     {
       double dEt = h_Den.GetBinWidth(i);
       cout << dEt << "\t" << endl;
@@ -686,9 +634,32 @@ int main(int argc, char *argv[])
       double effRelError = TMath::Sqrt(TMath::Power(recoEffRelError, 2)+TMath::Power(isoEffRelError, 2)+TMath::Power(sscEffRelError, 2));
       h_Efficiency.SetBinContent(i, h_recoEfficiency.GetBinContent(i)*h_ISOEfficiency.GetBinContent(i)*h_SSCEfficiency.GetBinContent(i));
       h_Efficiency.SetBinError(i, h_Efficiency.GetBinContent(i)*effRelError);
-    }
+    }//*/
   
+  for(int x = 1; x <  h_Efficiency.GetNbinsX()+1; x++){
+    double dE, contentRecoTruth, contentTruth, errRecoTruth, errTruth;
+    dE = h_Efficiency.GetXaxis()->GetBinWidth(x);
+    contentRecoTruth = h_Num.GetBinContent(x);
+    contentTruth = h_Den.GetBinContent(x);
+    h_Efficiency.SetBinContent(x, contentRecoTruth/contentTruth);
 
+    errRecoTruth = h_Num.GetBinError(x);
+    errTruth = h_Den.GetBinError(x);
+    h_Efficiency.SetBinError(x, contentRecoTruth/contentTruth*(TMath::Sqrt(TMath::Power(errRecoTruth/contentRecoTruth,2)+TMath::Power(errTruth/contentTruth,2))));
+  }
+
+  for(int x = 1; x <  h_Efficiency2.GetNbinsX()+1; x++){
+    double dE, contentReco, contentTruth, errReco, errTruth;
+    dE = h_Efficiency2.GetXaxis()->GetBinWidth(x);
+    contentReco = h_Reco.GetBinContent(x);
+    contentTruth = h_Den.GetBinContent(x);
+    h_Efficiency2.SetBinContent(x, contentReco/contentTruth);
+
+    errReco = h_Reco.GetBinError(x);
+    errTruth = h_Den.GetBinError(x);
+    h_Efficiency2.SetBinError(x, contentReco/contentTruth*(TMath::Sqrt(TMath::Power(errReco/contentReco,2)+TMath::Power(errTruth/contentTruth,2))));
+  }
+  
   for(int x = 1; x < h_Correlation_corr.GetNbinsX()+1; x++){
     for(int y = 1; y < h_Correlation_corr.GetNbinsY()+1; y++){
       double dx , dy, content, temp, contentErr, tempErr;
@@ -718,12 +689,19 @@ int main(int argc, char *argv[])
 
   
   
-  TFile* fout_cluster = new TFile(Form("PhotonOutput/MC/%s_50Kevents_erwanbinning_noNorm_newIsoDef_fullEMCalAcceptance_isoEffsscEffRecoEffSeperate_cutFlow_binMigration_hCorr_corr_stdCuts.root", MCname.Data()),"RECREATE");
+  //TFile* fout_cluster = new TFile(Form("PhotonOutput/MC/%s_1Mevents_erwanbinning_Norm_NormalGeVIsoDef_fullEMCalAcceptance_isoEffsscEffRecoEffTogether_cutFlow_binMigration_hCorr_corr_stdCuts_allptHatBins.root", MCname.Data()),"RECREATE");
+  TFile* fout_cluster = new TFile(Form("PhotonOutput/MC/%s_1Mevents_erwanbinning_noNorm_newExoticity_wTOFPlot_eff2_allptHatBins.root", MCname.Data()),"RECREATE");
+  
+  TGraphAsymmErrors* eff = new TGraphAsymmErrors(&h_Num, &h_Den);
+  eff->SetTitle("; p_{T}^{true} ; #epsilon");
+  eff->Write("Efficiency");
   
   h_Den.Write("hTruth");
   h_Num.Write("hRecoTruth");
   h_Reco.Write("hReco");
-
+  h_Efficiency.Write("hEfficiency");
+  h_Efficiency2.Write("hEfficiency2");
+  
   h_RecoAll.Write("hRecoAll");
   h_Fake.Write("hFake");
   h_FakeRate.Write("hFakeRate");
@@ -735,7 +713,7 @@ int main(int argc, char *argv[])
   h_Num_dcal.Write("hRecoTruth_dcal");
   h_Reco_dcal.Write("hReco_dcal");
 
-  h_Efficiency.Write("hEfficiency");
+  
   h_recoEfficiency.Write("hRecoEfficiency");
   h_migEfficiency.Write("hMigEfficiency");
 
@@ -747,7 +725,7 @@ int main(int argc, char *argv[])
   h_NoSSC.Write("h_NoSSC");
   h_SSCEfficiency.Write("hSSCEfficiency");
 
-  hCluster_iso_04_truth.Write("hCluster_iso_04_truth");
+  //hCluster_iso_04_truth.Write("hCluster_iso_04_truth");
   h_Correlation.Write("hCorrelation");
   h_Correlation_corr.Write("hCorrelation_dNdEt");
   h_Correlation_corr.Scale(1/sumWeight);
